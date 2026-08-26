@@ -1,0 +1,25 @@
+{
+  "name": "parcelgrid-us",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "PARCELGRID US — provenance-first predevelopment decision platform (U.S. profile). Country/jurisdiction adapter and unit/currency contracts.",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verify": "pnpm typecheck && pnpm test"
+  },
+  "dependencies": {
+    "decimal.js": "^10.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.18",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.9"
+  }
+}
