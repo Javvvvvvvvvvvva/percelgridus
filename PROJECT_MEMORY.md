@@ -77,12 +77,15 @@ a translation.
 
 ## Next steps (README-US Phase US-1)
 
-1. ~~Implement a concrete `AddressProvider` (U.S. Census Geocoder).~~ **Done** —
-   `src/lib/integrations/us-census/`. Pure parser fully fixture-tested;
-   injectable fetch. **Not yet live-verified:** outbound HTTPS to
-   `geocoding.geo.census.gov` is currently blocked by this session's egress
-   policy (proxy 403). Allowlist the host to run an end-to-end check; the code
-   path is otherwise complete.
+1. ~~Implement a concrete `AddressProvider` (U.S. Census Geocoder).~~ **Done and
+   live-verified** — `src/lib/integrations/us-census/`. Pure parser fully
+   fixture-tested; injectable fetch. Outbound HTTPS to
+   `geocoding.geo.census.gov` is now reachable from an environment whose egress
+   policy allowlists that host, and the provider was verified end-to-end there
+   (default global fetch → HTTP 200 → parsed official evidence). The live
+   check is captured as an opt-in smoke test
+   (`src/tests/integrations/census-geocoder.live.test.ts`, gated on
+   `CENSUS_LIVE=1`) so the default suite stays offline and hermetic.
 2. Implement a `ParcelProvider` for the pilot (Regrid or ATTOM) plus the
    pilot jurisdiction GIS, returning `ParcelRecord` with evidence.
 3. Add FEMA flood + USGS terrain `HazardProvider`s.

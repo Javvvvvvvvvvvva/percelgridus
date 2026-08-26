@@ -7,10 +7,12 @@
  * so the provider is testable without network and so a proxy-aware fetch can
  * be supplied in environments where outbound egress is mediated.
  *
- * Network note: in the current session outbound HTTPS to
- * geocoding.geo.census.gov is blocked by egress policy. The pure parser is
- * fully tested against fixtures; a live end-to-end check requires the host to
- * be allowlisted.
+ * Network note: outbound HTTPS to geocoding.geo.census.gov is reachable from
+ * an environment whose egress policy allowlists that host, and the provider
+ * has been live-verified end-to-end there against the default global fetch.
+ * The pure parser is fully fixture-tested and needs no network; the live
+ * smoke test (src/tests/integrations/census-geocoder.live.test.ts) is opt-in,
+ * gated on CENSUS_LIVE=1, so the default suite stays offline and hermetic.
  */
 
 import type { IsoDate } from "../../jurisdiction/evidence.js";
