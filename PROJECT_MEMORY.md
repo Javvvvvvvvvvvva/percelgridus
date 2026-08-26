@@ -42,6 +42,8 @@ profile. It is cloned read-only for reference; nothing is copied verbatim.
 | JurisdictionProfile + registry | `src/lib/jurisdiction/profile.ts` |
 | AddressProvider — U.S. Census Geocoder | `src/lib/integrations/us-census/` |
 | ParcelProvider — Hennepin County GIS | `src/lib/integrations/us-hennepin/` |
+| HazardProvider (flood) — FEMA NFHL | `src/lib/integrations/us-fema/` |
+| HazardProvider (terrain) — USGS 3DEP | `src/lib/integrations/us-usgs/` |
 
 ## Contracts that must not regress
 
@@ -98,7 +100,22 @@ a translation.
    tested; live smoke gated on `HENNEPIN_LIVE=1`. Known gap surfaced as
    `Unresolved`, not zero: the county parcel layer carries no building
    footprint (source it from the municipal building layer / a survey later).
-3. Add FEMA flood + USGS terrain `HazardProvider`s.
+3. ~~Add FEMA flood + USGS terrain `HazardProvider`s.~~ **Done** —
+   `src/lib/integrations/us-fema/` and `.../us-usgs/`.
+   - **FEMA flood (live-verified):** NFHL "Flood Hazard Zones" layer 28.
+     Queries the parcel polygon (intersects) and aggregates worst-case — any
+     SFHA zone wins, `inSfha` set from `SFHA_TF`; no mapped zone is
+     `Unresolved` (approval-blocking), never silently "not in a flood zone".
+     Live-verified against `hazards.fema.gov` (Minneapolis parcel → Zone X).
+     Gated live smoke: `FEMA_LIVE=1`.
+   - **USGS terrain (built, not live-verifiable here):** EPQS point samples
+     (parcel vertices + interior grid, point-in-polygon filtered) folded to a
+     `TerrainSummary`. Min/max elevation are official 3DEP; `meanSlopePct` is a
+     coarse extent-based estimate flagged in the evidence note. `epqs.nationalmap.gov`
+     is NOT on this session's egress allowlist (proxy 403), so the live smoke
+     (`USGS_LIVE=1`) fails here by design; parser/sampling are fully fixture-
+     tested offline. Allowlist the host (or inject a proxy-aware fetch) to run
+     it green — the code path is complete.
 4. Stand up the first `JurisdictionProfile` (Minneapolis) and register it.
 5. Only then bring in a persistence layer with USD/decimal columns and the
    UUID/APN split from `identifiers.ts`.
