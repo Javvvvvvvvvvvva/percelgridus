@@ -1,89 +1,58 @@
 /**
- * MinneapolisPendingZoningProvider — an honest, evidence-first placeholder for
- * the Minneapolis by-right zoning adapter.
+ * MinneapolisPendingZoningProvider — an all-Unresolved placeholder that
+ * satisfies the {@link ZoningEvidenceProvider} contract without a network
+ * source.
  *
- * README-US is explicit that there is "no safe nationwide hard-coded zoning
- * engine" and that the product must say "by-right reference" — never "legal
- * maximum" — until a qualified local professional confirms the rule set
- * (README-US §2). Until the real Minneapolis ordinance parser exists, this
- * adapter satisfies the {@link ZoningEvidenceProvider} contract WITHOUT
- * fabricating a single rule: every field of the envelope is returned as an
- * {@link Unresolved} that blocks approval. A missing rule is visible product
- * state, not a silent zero (README-US §4).
- *
- * The `citationFor` template still points at the real ordinance so that when
- * the parser lands, each parsed value is stamped with a well-formed
- * {@link RuleCitation}. Swapping this class for the parsing implementation is
- * the entirety of Phase US-2's zoning work; nothing downstream changes shape.
+ * The live {@link MinneapolisZoningProvider} now resolves the zoning district
+ * from the city's official layer; this placeholder is retained for offline
+ * wiring and tests where no fetch is available. It fabricates nothing: every
+ * envelope field, the district included, is an {@link Unresolved} that blocks
+ * approval — a missing rule is visible product state, not a silent zero
+ * (README-US §2, §4).
  */
 
-import type { RuleCitation, Unresolved } from "../../jurisdiction/evidence.js";
+import type { RuleCitation } from "../../jurisdiction/evidence.js";
 import { unresolved } from "../../jurisdiction/evidence.js";
 import type { ParcelIdentity } from "../../jurisdiction/identifiers.js";
 import type {
   ByRightEnvelope,
+  PolygonCoordinates,
   ZoningEvidenceProvider,
 } from "../../jurisdiction/providers.js";
-
-const JURISDICTION_ID = "us-mn-hennepin-minneapolis";
-
-/** Who owns resolving a zoning gap and how, echoed into every Unresolved. */
-const ZONING_OWNER = "local zoning professional";
-const ZONING_ACTION =
-  "Confirm the parcel's zoning district and by-right envelope against the " +
-  "City of Minneapolis Unified Development Ordinance (Title 20); the automated " +
-  "adapter does not yet parse Minneapolis rules.";
+import { buildEnvelope } from "./parse-zoning.js";
+import {
+  MINNEAPOLIS_JURISDICTION_ID,
+  ZONING_OWNER,
+  isoDate,
+  minneapolisCitation,
+} from "./zoning-shared.js";
 
 export class MinneapolisPendingZoningProvider implements ZoningEvidenceProvider {
   readonly id = "us-minneapolis-zoning-pending";
-  readonly jurisdictionId = JURISDICTION_ID;
-  /**
-   * `0.0.0-pending` marks that no rule text has been parsed yet. The real
-   * adapter bumps this to a dated version (e.g. "2026.08") once it parses the
-   * ordinance, and stamps it onto each RuleCitation for reproducibility.
-   */
+  readonly jurisdictionId = MINNEAPOLIS_JURISDICTION_ID;
+  /** `0.0.0-pending` marks that nothing — not even the district — is resolved. */
   readonly parserVersion = "0.0.0-pending";
 
   /**
-   * Returns a fully-unresolved envelope. Every constraint is a tracked gap an
-   * owner must close, so no scenario built on it can be represented as
-   * approvable while the real parser is absent.
+   * Returns a fully-unresolved envelope regardless of geometry. Every
+   * constraint is a tracked gap an owner must close, so no scenario built on it
+   * can be represented as approvable.
    */
-  async envelopeFor(_identity: ParcelIdentity): Promise<ByRightEnvelope> {
-    const gap = (subject: string): Unresolved =>
-      unresolved(subject, ZONING_OWNER, ZONING_ACTION);
-
-    return {
-      jurisdictionId: this.jurisdictionId,
-      zoningDistrict: gap("zoning district"),
-      allowedUses: gap("allowed uses"),
-      maxFar: gap("maximum floor area ratio"),
-      maxLotCoverage: gap("maximum lot coverage"),
-      maxHeight: gap("maximum height"),
-      minSetbacks: gap("minimum setbacks (front/side/rear)"),
-      minParkingStalls: gap("minimum parking stalls"),
-      overlays: [gap("overlay districts")],
-      discretionaryApprovals: [
-        gap("discretionary approvals / special reviews"),
-      ],
-    };
+  async envelopeFor(
+    _identity: ParcelIdentity,
+    _geometry?: PolygonCoordinates,
+  ): Promise<ByRightEnvelope> {
+    return buildEnvelope(
+      unresolved(
+        "zoning district",
+        ZONING_OWNER,
+        "No zoning source is wired in this configuration; use the live " +
+          "MinneapolisZoningProvider or confirm the district manually.",
+      ),
+    );
   }
 
-  /**
-   * A citation template for a section of the Minneapolis ordinance. The
-   * parsed value is filled in by the real adapter; here it documents the
-   * source addressing that every parsed rule will carry.
-   */
   citationFor(section: string): RuleCitation {
-    return {
-      jurisdictionId: this.jurisdictionId,
-      label: "City of Minneapolis Unified Development Ordinance",
-      locator:
-        "https://library.municode.com/mn/minneapolis/codes/code_of_ordinances",
-      ordinanceTitle: "Minneapolis Code of Ordinances Title 20 (Zoning Code)",
-      ordinanceSection: section,
-      retrievalDate: new Date().toISOString().slice(0, 10),
-      parserVersion: this.parserVersion,
-    };
+    return minneapolisCitation(section, this.parserVersion, isoDate(new Date()));
   }
 }

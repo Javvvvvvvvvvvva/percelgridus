@@ -8,12 +8,14 @@
  *   - address  → U.S. Census Geocoder      (us-census)
  *   - parcel   → Hennepin County GIS       (us-hennepin)
  *   - hazard   → FEMA NFHL flood + USGS 3DEP terrain
+ *   - zoning   → City of Minneapolis primary-zoning layer (district only)
  *
- * Zoning, finance, and tax are not yet sourced, so they are supplied by honest
- * pending adapters that surface every value as Unresolved (see pending-zoning
- * and pending-finance-tax). The profile is therefore contract-complete and
- * type-safe today, and each pending piece is swapped out in place without any
- * downstream change (README-US §"Proposed adapter boundary").
+ * The zoning adapter resolves the official zoning DISTRICT; its by-right
+ * numeric rules, plus finance and tax, are not yet sourced and surface as
+ * Unresolved (see parse-zoning and pending-finance-tax). The profile is
+ * therefore contract-complete and type-safe today, and each pending piece is
+ * swapped out in place without any downstream change (README-US §"Proposed
+ * adapter boundary").
  *
  * The reusable core never names a country; it reaches all of this only through
  * {@link JurisdictionProfile}.
@@ -36,7 +38,8 @@ import {
   MINNEAPOLIS_PENDING_FINANCE,
   MINNEAPOLIS_PENDING_TAX,
 } from "./pending-finance-tax.js";
-import { MinneapolisPendingZoningProvider } from "./pending-zoning.js";
+import { MinneapolisZoningProvider } from "./zoning.js";
+import type { MinneapolisZoningConfig } from "./zoning.js";
 
 /** Stable internal id for the pilot jurisdiction. */
 export const MINNEAPOLIS_JURISDICTION_ID = "us-mn-hennepin-minneapolis";
@@ -52,6 +55,7 @@ export interface MinneapolisProfileConfig {
   readonly hennepin?: HennepinParcelConfig;
   readonly fema?: FemaFloodConfig;
   readonly usgs?: UsgsTerrainConfig;
+  readonly zoning?: MinneapolisZoningConfig;
 }
 
 /**
@@ -70,7 +74,7 @@ export function createMinneapolisProfile(
     units: US_UNIT_PROFILE,
     addressProvider: new CensusAddressProvider(config.census),
     parcelProvider: new HennepinParcelProvider(config.hennepin),
-    zoningProvider: new MinneapolisPendingZoningProvider(),
+    zoningProvider: new MinneapolisZoningProvider(config.zoning),
     hazardProviders: [
       new FemaFloodProvider(config.fema),
       new UsgsTerrainProvider(config.usgs),

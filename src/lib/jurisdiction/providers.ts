@@ -95,7 +95,17 @@ export interface ZoningEvidenceProvider {
   readonly jurisdictionId: string;
   /** The adapter's own rule-parser version, echoed into RuleCitation. */
   readonly parserVersion: string;
-  envelopeFor(identity: ParcelIdentity): Promise<ByRightEnvelope>;
+  /**
+   * Resolve the by-right envelope for a parcel. Zoning is a spatial fact, so
+   * the parcel geometry (as produced by {@link ParcelProvider} in
+   * `ParcelRecord.geometry`) is passed the same way {@link HazardProvider}
+   * takes it. It is optional: without geometry an adapter that needs a spatial
+   * lookup returns the district as `Unresolved` rather than guessing.
+   */
+  envelopeFor(
+    identity: ParcelIdentity,
+    geometry?: PolygonCoordinates,
+  ): Promise<ByRightEnvelope>;
   /** Citation template the adapter stamps onto each parsed rule. */
   citationFor(section: string): RuleCitation;
 }

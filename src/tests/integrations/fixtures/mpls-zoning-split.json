@@ -1,0 +1,16 @@
+{
+  "features": [
+    {
+      "attributes": {
+        "Land_Use": "Urban Neighborhood 2",
+        "Land_Use_Code": "UN2"
+      }
+    },
+    {
+      "attributes": {
+        "Land_Use": "Community Mixed Use",
+        "Land_Use_Code": "CM3"
+      }
+    }
+  ]
+}

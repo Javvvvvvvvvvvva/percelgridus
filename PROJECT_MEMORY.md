@@ -123,14 +123,25 @@ a translation.
    **Done** — `src/lib/integrations/us-minneapolis/`. `createMinneapolisProfile`
    binds the four live providers (Census address, Hennepin parcel, FEMA flood,
    USGS terrain) to `us-mn-hennepin-minneapolis`; `registerMinneapolis` puts it
-   in a `JurisdictionRegistry` (the MVP's single entry). Zoning, finance, and
-   tax have no sourced data yet, so they are **honest pending adapters** that
-   surface every value as `Unresolved` (approval-blocking) rather than a
-   fabricated default — README-US §2 ("by-right reference, not legal maximum,
-   until a professional confirms"; "no safe nationwide hard-coded zoning
-   engine") and §4 ("missing evidence is visible product state"). Each pending
-   piece is swapped for its real parser in place, with no downstream shape
-   change. Per-provider network config threads through for tests/proxy fetch.
+   in a `JurisdictionRegistry` (the MVP's single entry). Finance and tax have no
+   sourced data yet, so they are **honest pending profiles** that surface every
+   value as `Unresolved` (approval-blocking) rather than a fabricated default —
+   README-US §2/§4. Each pending piece is swapped for its real source in place,
+   with no downstream shape change. Per-provider network config threads through
+   for tests/proxy fetch.
+   - **Zoning (district live-verified):** `MinneapolisZoningProvider`
+     (`us-minneapolis/zoning.ts`) resolves the official zoning **district** from
+     the City of Minneapolis "Planning Primary Zoning" ArcGIS layer via a
+     polygon-intersects query — the `ZoningEvidenceProvider` contract was
+     extended so `envelopeFor(identity, geometry?)` receives the parcel geometry
+     (as `HazardProvider` does). A split-zoned parcel returns `Unresolved`, not a
+     mis-picked district. By-right **numeric rules** (FAR/height/setbacks/
+     coverage/parking), allowed uses, overlays, and discretionary approvals stay
+     `Unresolved` (no ordinance rule text parsed yet), per §2 "no safe hard-coded
+     zoning engine". Pure parser fixture-tested; live smoke gated on
+     `MPLS_ZONING_LIVE=1` (verified green → UN2 for a known parcel).
+     `MinneapolisPendingZoningProvider` is retained as the all-Unresolved
+     offline placeholder.
 5. Only then bring in a persistence layer with USD/decimal columns and the
    UUID/APN split from `identifiers.ts`.
 
