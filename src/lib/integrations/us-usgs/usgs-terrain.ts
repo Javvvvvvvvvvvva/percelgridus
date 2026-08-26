@@ -8,12 +8,12 @@
  * pure parser. `fetchImpl` is injected for testing without network and for a
  * proxy-aware fetch where egress is mediated.
  *
- * Network note: unlike the Census, Hennepin, and FEMA hosts, epqs.nationalmap.gov
- * is NOT reachable from the current census-allowlisted egress environment
- * (proxy 403). The pure parser and sampling are fully fixture-tested offline;
- * the live smoke test (src/tests/integrations/usgs-terrain.live.test.ts) is
- * opt-in, gated on USGS_LIVE=1, and will pass once the host is allowlisted (or
- * a proxy-aware fetch is injected). The code path is otherwise complete.
+ * Network note: epqs.nationalmap.gov is reachable from an environment whose
+ * egress policy allowlists the host, and the live smoke test
+ * (src/tests/integrations/usgs-terrain.live.test.ts, gated on USGS_LIVE=1) has
+ * been verified green end-to-end against a known Minneapolis parcel. The pure
+ * parser and sampling are fully fixture-tested offline, and the live check
+ * stays opt-in so the default suite is hermetic.
  */
 
 import type { IsoDate } from "../../jurisdiction/evidence.js";

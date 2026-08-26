@@ -108,14 +108,17 @@ a translation.
      `Unresolved` (approval-blocking), never silently "not in a flood zone".
      Live-verified against `hazards.fema.gov` (Minneapolis parcel → Zone X).
      Gated live smoke: `FEMA_LIVE=1`.
-   - **USGS terrain (built, not live-verifiable here):** EPQS point samples
+   - **USGS terrain (live-verified):** EPQS point samples
      (parcel vertices + interior grid, point-in-polygon filtered) folded to a
      `TerrainSummary`. Min/max elevation are official 3DEP; `meanSlopePct` is a
-     coarse extent-based estimate flagged in the evidence note. `epqs.nationalmap.gov`
-     is NOT on this session's egress allowlist (proxy 403), so the live smoke
-     (`USGS_LIVE=1`) fails here by design; parser/sampling are fully fixture-
-     tested offline. Allowlist the host (or inject a proxy-aware fetch) to run
-     it green — the code path is complete.
+     coarse extent-based estimate flagged in the evidence note.
+     `epqs.nationalmap.gov` is now reachable from an environment whose egress
+     policy allowlists that host, and the live smoke (`USGS_LIVE=1`) passes
+     end-to-end there (default global fetch → HTTP 200 → parsed 3DEP
+     elevations for a known Minneapolis parcel). Parser/sampling remain fully
+     fixture-tested offline; the live check stays opt-in
+     (`src/tests/integrations/usgs-terrain.live.test.ts`) so the default suite
+     is hermetic.
 4. Stand up the first `JurisdictionProfile` (Minneapolis) and register it.
 5. Only then bring in a persistence layer with USD/decimal columns and the
    UUID/APN split from `identifiers.ts`.
