@@ -1,0 +1,18 @@
+{
+  "result": {
+    "input": {
+      "address": { "address": "not a real address zzzzz" },
+      "benchmark": {
+        "id": "4",
+        "benchmarkName": "Public_AR_Current",
+        "isDefault": true
+      },
+      "vintage": {
+        "id": "4",
+        "vintageName": "Current_Current",
+        "isDefault": true
+      }
+    },
+    "addressMatches": []
+  }
+}

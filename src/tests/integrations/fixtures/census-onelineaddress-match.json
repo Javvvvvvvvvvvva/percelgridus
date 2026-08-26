@@ -1,0 +1,51 @@
+{
+  "result": {
+    "input": {
+      "address": { "address": "3300 Aldrich Ave S, Minneapolis, MN 55408" },
+      "benchmark": {
+        "id": "4",
+        "benchmarkName": "Public_AR_Current",
+        "benchmarkDescription": "Public Address Ranges - Current Benchmark",
+        "isDefault": true
+      },
+      "vintage": {
+        "id": "4",
+        "vintageName": "Current_Current",
+        "vintageDescription": "Current Vintage - Current Benchmark",
+        "isDefault": true
+      }
+    },
+    "addressMatches": [
+      {
+        "matchedAddress": "3300 ALDRICH AVE S, MINNEAPOLIS, MN, 55408",
+        "coordinates": { "x": -93.290245, "y": 44.938251 },
+        "tigerLine": { "tigerLineId": "13056791", "side": "R" },
+        "addressComponents": {
+          "streetName": "ALDRICH",
+          "suffixType": "AVE",
+          "city": "MINNEAPOLIS",
+          "state": "MN",
+          "zip": "55408"
+        },
+        "geographies": {
+          "States": [{ "GEOID": "27", "NAME": "Minnesota", "STATE": "27" }],
+          "Counties": [
+            { "GEOID": "27053", "NAME": "Hennepin County", "STATE": "27", "COUNTY": "053" }
+          ],
+          "Census Tracts": [
+            { "GEOID": "27053105300", "STATE": "27", "COUNTY": "053", "TRACT": "105300" }
+          ],
+          "Census Blocks": [
+            {
+              "GEOID": "270531053001004",
+              "STATE": "27",
+              "COUNTY": "053",
+              "TRACT": "105300",
+              "BLOCK": "1004"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

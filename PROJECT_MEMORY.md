@@ -40,6 +40,7 @@ profile. It is cloned read-only for reference; nothing is copied verbatim.
 | Identifiers (UUID vs APN) | `src/lib/jurisdiction/identifiers.ts` |
 | Provider seams | `src/lib/jurisdiction/providers.ts` |
 | JurisdictionProfile + registry | `src/lib/jurisdiction/profile.ts` |
+| AddressProvider — U.S. Census Geocoder | `src/lib/integrations/us-census/` |
 
 ## Contracts that must not regress
 
@@ -76,14 +77,24 @@ a translation.
 
 ## Next steps (README-US Phase US-1)
 
-1. Implement a concrete `AddressProvider` (U.S. Census Geocoder) against the
-   seam in `providers.ts`.
+1. ~~Implement a concrete `AddressProvider` (U.S. Census Geocoder).~~ **Done** —
+   `src/lib/integrations/us-census/`. Pure parser fully fixture-tested;
+   injectable fetch. **Not yet live-verified:** outbound HTTPS to
+   `geocoding.geo.census.gov` is currently blocked by this session's egress
+   policy (proxy 403). Allowlist the host to run an end-to-end check; the code
+   path is otherwise complete.
 2. Implement a `ParcelProvider` for the pilot (Regrid or ATTOM) plus the
    pilot jurisdiction GIS, returning `ParcelRecord` with evidence.
 3. Add FEMA flood + USGS terrain `HazardProvider`s.
 4. Stand up the first `JurisdictionProfile` (Minneapolis) and register it.
 5. Only then bring in a persistence layer with USD/decimal columns and the
    UUID/APN split from `identifiers.ts`.
+
+### Runtime egress note
+
+Node's global `fetch` (undici) does not honor `HTTPS_PROXY` automatically. In
+a proxy-mediated environment, inject a proxy-aware fetch via
+`CensusGeocoderConfig.fetchImpl` rather than relying on the default.
 
 ## Done condition
 
