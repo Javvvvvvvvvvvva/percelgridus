@@ -1,0 +1,15 @@
+{
+  "displayFieldName": "SALE_CODE_NAME",
+  "fieldAliases": {
+    "PID": "PID"
+  },
+  "fields": [
+    {
+      "name": "PID",
+      "type": "esriFieldTypeString",
+      "alias": "PID",
+      "length": 13
+    }
+  ],
+  "features": []
+}

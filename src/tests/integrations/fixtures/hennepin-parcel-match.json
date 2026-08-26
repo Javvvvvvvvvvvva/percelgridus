@@ -1,0 +1,120 @@
+{
+  "displayFieldName": "SALE_CODE_NAME",
+  "fieldAliases": {
+    "PID": "PID",
+    "PID_TEXT": "PID_TEXT",
+    "OWNER_NM": "OWNER_NM",
+    "HOUSE_NO": "HOUSE_NO",
+    "STREET_NM": "STREET_NM",
+    "MUNIC_NM": "MUNIC_NM",
+    "ZIP_CD": "ZIP_CD",
+    "PARCEL_AREA": "PARCEL_AREA",
+    "LAT": "LAT",
+    "LON": "LON"
+  },
+  "geometryType": "esriGeometryPolygon",
+  "spatialReference": {
+    "wkid": 4326,
+    "latestWkid": 4326
+  },
+  "fields": [
+    {
+      "name": "PID",
+      "type": "esriFieldTypeString",
+      "alias": "PID",
+      "length": 13
+    },
+    {
+      "name": "PID_TEXT",
+      "type": "esriFieldTypeString",
+      "alias": "PID_TEXT",
+      "length": 12
+    },
+    {
+      "name": "OWNER_NM",
+      "type": "esriFieldTypeString",
+      "alias": "OWNER_NM",
+      "length": 35
+    },
+    {
+      "name": "HOUSE_NO",
+      "type": "esriFieldTypeInteger",
+      "alias": "HOUSE_NO"
+    },
+    {
+      "name": "STREET_NM",
+      "type": "esriFieldTypeString",
+      "alias": "STREET_NM",
+      "length": 20
+    },
+    {
+      "name": "MUNIC_NM",
+      "type": "esriFieldTypeString",
+      "alias": "MUNIC_NM",
+      "length": 16
+    },
+    {
+      "name": "ZIP_CD",
+      "type": "esriFieldTypeString",
+      "alias": "ZIP_CD",
+      "length": 5
+    },
+    {
+      "name": "PARCEL_AREA",
+      "type": "esriFieldTypeDouble",
+      "alias": "PARCEL_AREA"
+    },
+    {
+      "name": "LAT",
+      "type": "esriFieldTypeDouble",
+      "alias": "LAT"
+    },
+    {
+      "name": "LON",
+      "type": "esriFieldTypeDouble",
+      "alias": "LON"
+    }
+  ],
+  "features": [
+    {
+      "attributes": {
+        "PID": "0402824140132",
+        "PID_TEXT": "(132)",
+        "OWNER_NM": "PARCELGRID TEST OWNER              ",
+        "HOUSE_NO": 3300,
+        "STREET_NM": "ALDRICH AVE S       ",
+        "MUNIC_NM": "MINNEAPOLIS     ",
+        "ZIP_CD": "55408",
+        "PARCEL_AREA": 4346.61290186,
+        "LAT": 44.942782,
+        "LON": -93.2898
+      },
+      "geometry": {
+        "rings": [
+          [
+            [
+              -93.28955959708314,
+              44.942743788696504
+            ],
+            [
+              -93.29005694668004,
+              44.942744222596694
+            ],
+            [
+              -93.29005591640745,
+              44.94283665073853
+            ],
+            [
+              -93.2895585457861,
+              44.94283647974608
+            ],
+            [
+              -93.28955959708314,
+              44.942743788696504
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

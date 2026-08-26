@@ -185,10 +185,17 @@ export function unresolved(
 
 // ─────────────────────────── Guards & helpers ───────────────────────────
 
-export function isUnresolved<T>(
-  e: EvidenceOrUnresolved<T>,
-): e is Unresolved {
-  return (e as Unresolved).kind === "unresolved";
+/**
+ * Structural guard for a tracked gap. Typed on `unknown` so it also narrows
+ * unions that carry an `Unresolved` alongside a non-Evidence value — e.g. a
+ * provider's `ParcelRecord | Unresolved` — not only `EvidenceOrUnresolved<T>`.
+ */
+export function isUnresolved(e: unknown): e is Unresolved {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    (e as { kind?: unknown }).kind === "unresolved"
+  );
 }
 
 export function isEvidence<T>(e: EvidenceOrUnresolved<T>): e is Evidence<T> {

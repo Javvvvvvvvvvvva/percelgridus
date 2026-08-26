@@ -41,6 +41,7 @@ profile. It is cloned read-only for reference; nothing is copied verbatim.
 | Provider seams | `src/lib/jurisdiction/providers.ts` |
 | JurisdictionProfile + registry | `src/lib/jurisdiction/profile.ts` |
 | AddressProvider — U.S. Census Geocoder | `src/lib/integrations/us-census/` |
+| ParcelProvider — Hennepin County GIS | `src/lib/integrations/us-hennepin/` |
 
 ## Contracts that must not regress
 
@@ -86,8 +87,17 @@ a translation.
    check is captured as an opt-in smoke test
    (`src/tests/integrations/census-geocoder.live.test.ts`, gated on
    `CENSUS_LIVE=1`) so the default suite stays offline and hermetic.
-2. Implement a `ParcelProvider` for the pilot (Regrid or ATTOM) plus the
-   pilot jurisdiction GIS, returning `ParcelRecord` with evidence.
+2. ~~Implement a `ParcelProvider` for the pilot, returning `ParcelRecord`
+   with evidence.~~ **Done and live-verified** — `src/lib/integrations/us-hennepin/`.
+   Chose the **Hennepin County GIS** "County Parcels" layer (the assessor's
+   system of record) over Regrid/ATTOM, which re-publish county data
+   downstream: provenance-first means sourcing the original, and the county
+   service is free, keyless, and reachable from the census-allowlisted egress
+   environment. `byPoint` (intersects query) and `byIdentifier` (PID equality)
+   both live-verified against a known Minneapolis parcel. Pure parser fixture-
+   tested; live smoke gated on `HENNEPIN_LIVE=1`. Known gap surfaced as
+   `Unresolved`, not zero: the county parcel layer carries no building
+   footprint (source it from the municipal building layer / a survey later).
 3. Add FEMA flood + USGS terrain `HazardProvider`s.
 4. Stand up the first `JurisdictionProfile` (Minneapolis) and register it.
 5. Only then bring in a persistence layer with USD/decimal columns and the
