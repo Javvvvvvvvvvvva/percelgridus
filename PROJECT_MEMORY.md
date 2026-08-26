@@ -119,7 +119,18 @@ a translation.
      fixture-tested offline; the live check stays opt-in
      (`src/tests/integrations/usgs-terrain.live.test.ts`) so the default suite
      is hermetic.
-4. Stand up the first `JurisdictionProfile` (Minneapolis) and register it.
+4. ~~Stand up the first `JurisdictionProfile` (Minneapolis) and register it.~~
+   **Done** — `src/lib/integrations/us-minneapolis/`. `createMinneapolisProfile`
+   binds the four live providers (Census address, Hennepin parcel, FEMA flood,
+   USGS terrain) to `us-mn-hennepin-minneapolis`; `registerMinneapolis` puts it
+   in a `JurisdictionRegistry` (the MVP's single entry). Zoning, finance, and
+   tax have no sourced data yet, so they are **honest pending adapters** that
+   surface every value as `Unresolved` (approval-blocking) rather than a
+   fabricated default — README-US §2 ("by-right reference, not legal maximum,
+   until a professional confirms"; "no safe nationwide hard-coded zoning
+   engine") and §4 ("missing evidence is visible product state"). Each pending
+   piece is swapped for its real parser in place, with no downstream shape
+   change. Per-provider network config threads through for tests/proxy fetch.
 5. Only then bring in a persistence layer with USD/decimal columns and the
    UUID/APN split from `identifiers.ts`.
 
