@@ -187,8 +187,25 @@ a translation.
        egress path still blocks them, so the PDF is fetched with `curl` and read
        with `pymupdf`. To add standards, extend the tables from the ordinance
        text with exact sections; do not transcribe from memory.
-5. Only then bring in a persistence layer with USD/decimal columns and the
-   UUID/APN split from `identifiers.ts`.
+5. ~~Bring in a persistence layer with USD/decimal columns and the UUID/APN
+   split from `identifiers.ts`.~~ **Done** — `src/lib/persistence/`.
+   - **UUID/APN split:** `SiteRepository` / `InMemorySiteRepository` key a site
+     by its opaque `SiteId` UUID and index every external identifier (APN,
+     provider id) separately. `findByExternalIdentifier(system, value)` is a
+     source-record lookup, not a primary-key access; an APN can be reassigned to
+     a new site (split/merge) and re-points the index, and the same value under
+     a different `system` is a different identifier. Tested for all of these.
+   - **USD/decimal columns:** `serialization.ts` crosses Money/Length/Area to
+     columns as their exact canonical decimal STRINGS (`toDecimalString` /
+     `toMetersString` / `toSquareMetersString`) with explicit currency/unit — a
+     raw `number` never touches a stored value, so no float drift (tested incl.
+     0.01 accumulation and sub-cent precision).
+   - **Reference DDL:** `schema.sql` (Postgres) is the target a real store maps
+     onto: `site` (uuid PK), `site_external_identifier` (many-per-site, never a
+     key), and `site_financial_assumption` with `NUMERIC(19,4)` USD amounts +
+     an explicit `currency` check — no float near a dollar value.
+   - The in-memory impl is dependency-free (no DB in the library core); wiring a
+     real Postgres is a straight map onto these tables.
 
 ### Runtime egress note
 
