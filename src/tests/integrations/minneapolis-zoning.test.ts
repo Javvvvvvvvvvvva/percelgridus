@@ -151,19 +151,17 @@ describe("MinneapolisZoningProvider", () => {
     expect(env.zoningDistrict.source?.locator).toBe(primaryUrl);
   });
 
-  it("resolves the built form district but keeps numeric rules Unresolved (table empty)", async () => {
+  it("resolves the built form height from Table 540-6, conditional rules stay Unresolved", async () => {
     const provider = new MinneapolisZoningProvider({
       fetchImpl: routedFetch("mpls-zoning-un2", "mpls-built-form-i2"),
       now: () => new Date("2026-08-26T00:00:00Z"),
     });
     const env = await provider.envelopeFor(identity(), SQUARE);
-    // No sourced Chapter 540 row today, so every numeric field is a tracked gap
-    // whose action names the resolved built form district.
-    expect(isUnresolved(env.maxHeight)).toBe(true);
-    if (isUnresolved(env.maxHeight)) {
-      expect(env.maxHeight.requiredAction).toContain("Interior 2");
-      expect(env.maxHeight.requiredAction).toContain("Chapter 540");
-    }
+    // Interior 2 has a sourced height (35 ft) — an unverified official rule.
+    if (!isEvidence(env.maxHeight)) throw new Error("expected a height rule");
+    expect(env.maxHeight.value.toFeet()).toBeCloseTo(35);
+    expect(env.maxHeight.verification).toBe("unverified");
+    // FAR / coverage / setbacks are conditional and remain Unresolved.
     expect(isUnresolved(env.maxFar)).toBe(true);
     expect(isUnresolved(env.maxLotCoverage)).toBe(true);
     expect(isUnresolved(env.minSetbacks)).toBe(true);
@@ -250,12 +248,38 @@ describe("builtFormNumericEnvelope", () => {
     owner: "local zoning professional",
   };
 
-  it("ships an empty standards table (no fabricated by-right numbers)", () => {
-    expect(Object.keys(MINNEAPOLIS_BUILT_FORM_STANDARDS)).toHaveLength(0);
+  it("seeds only sourced, built-form-keyed values (height today)", () => {
+    // Interior 2 carries a sourced height (Table 540-6); the conditional
+    // standards (FAR, coverage, yards) are deliberately absent.
+    const i2 = MINNEAPOLIS_BUILT_FORM_STANDARDS["Interior 2"];
+    expect(i2?.maxHeight?.value.feet).toBe(35);
+    expect(i2?.maxFar).toBeUndefined();
+    expect(i2?.maxLotCoverage).toBeUndefined();
+    // "Core 50" (No limit) and the split "Transit 30A/B" are not seeded.
+    expect(MINNEAPOLIS_BUILT_FORM_STANDARDS["Core 50"]).toBeUndefined();
+    expect(MINNEAPOLIS_BUILT_FORM_STANDARDS["Transit 30A"]).toBeUndefined();
   });
 
-  it("yields Unresolved for every field when the district has no sourced row", () => {
-    const env = builtFormNumericEnvelope(ctx);
+  it("resolves height for a seeded district, keeping the rest Unresolved", () => {
+    const env = builtFormNumericEnvelope(ctx); // Interior 2
+    if (!isEvidence(env.maxHeight)) throw new Error("expected a height rule");
+    expect(env.maxHeight.provenance).toBe("official");
+    expect(env.maxHeight.verification).toBe("unverified");
+    expect(env.maxHeight.value.toFeet()).toBeCloseTo(35);
+    expect(env.maxHeight.citation?.ordinanceSection).toContain("540.410");
+    // Conditional standards stay Unresolved and approval-blocking.
+    const gaps: EvidenceOrUnresolved<unknown>[] = [
+      env.maxFar,
+      env.maxLotCoverage,
+      env.minSetbacks,
+    ];
+    expect(gaps.every(isUnresolved)).toBe(true);
+    // The unverified height rule blocks too, so all four are blockers.
+    expect(approvalBlockers([env.maxHeight, ...gaps]).length).toBe(4);
+  });
+
+  it("yields Unresolved for every field for a district with no sourced row", () => {
+    const env = builtFormNumericEnvelope({ ...ctx, builtFormDistrict: "Core 50" });
     const fields: EvidenceOrUnresolved<unknown>[] = [
       env.maxFar,
       env.maxLotCoverage,

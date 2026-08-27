@@ -4,20 +4,23 @@
  * resolved district to Evidence.
  *
  * Honesty boundary (README-US §2):
- *   - The by-right numeric standards (height, FAR, lot coverage, setbacks) are
- *     defined per built form district in Minneapolis Code Chapter 540.
- *   - The ordinance TEXT hosts (municode.com, minneapolis2040.com) are not
- *     reachable from this egress environment, so NO numeric value has been
- *     transcribed. A cited-but-unsourced number is exactly what the code warns
- *     against ("no safe nationwide hard-coded zoning engine"; state a
- *     "by-right reference", not a legal maximum).
- *   - The table below is therefore empty. When a district's row is added
- *     straight from the ordinance text — with its exact section, verbatim text,
- *     and effective date — every value flows through as an official rule at
- *     `unverified` status, which the approval gate already treats as a blocker:
- *     a preliminary reference a professional must confirm, never a legal max.
+ *   - The by-right numeric standards are defined per built form district in
+ *     Minneapolis Code Chapter 540. Values here are transcribed from the City's
+ *     published Chapter 540 text (fetched when the ordinance host is reachable);
+ *     each is stamped with its exact section and verbatim text.
+ *   - Every seeded value is a preliminary reference at `verification:
+ *     "unverified"`, which the approval gate treats as a blocker — never a legal
+ *     maximum until a professional confirms it ("no safe nationwide hard-coded
+ *     zoning engine").
+ *   - Only standards that the built form district determines ALONE are modeled
+ *     as scalars here. Today that is maximum HEIGHT (Table 540-6). Maximum FAR
+ *     (Table 540-2), lot coverage (Table 540-23), and yards/setbacks are
+ *     conditional on the primary district category and/or the building use, so
+ *     collapsing them to one number per built form district would misrepresent
+ *     the ordinance; they stay Unresolved until the envelope is parameterized by
+ *     primary district and use.
  *
- * A district with no row here yields Unresolved for every numeric field, so
+ * A district with no sourced value for a field yields Unresolved for it, so
  * coverage only ever grows by adding sourced rows.
  */
 
@@ -60,13 +63,58 @@ export interface BuiltFormStandards {
 }
 
 /**
+ * Maximum height per built form district, verbatim from Minneapolis Code
+ * § 540.410, Table 540-6 "Maximum Height by District" (fetched from the City's
+ * published Chapter 540). Height is the one by-right standard keyed by the
+ * built form district ALONE, so it maps cleanly here; the value is authoritative
+ * as `feet` with `stories` carried for display.
+ *
+ * Only districts whose GIS name matches Table 540-6 exactly are seeded. Left
+ * unseeded on purpose (each remains Unresolved):
+ *   - "Core 50" — Table 540-6 states "No limit" (no numeric maximum);
+ *   - "Transit 30A" / "Transit 30B" — the GIS layer splits these, but Table
+ *     540-6 lists a single "Transit 30"; the A/B reconciliation must be
+ *     confirmed against the ordinance before a value is asserted.
+ *
+ * Every seeded value is a preliminary reference at `verification: "unverified"`
+ * (see `rule` below) — it blocks approval until a professional confirms it, and
+ * is subject to the use-specific limits in Table 540-7 (§ 540.410(a)).
+ */
+const HEIGHT_SECTION = "§ 540.410 (Table 540-6)";
+function height(
+  feet: number,
+  stories: number,
+): SourcedValue<{ feet: number; stories?: number }> {
+  return {
+    value: { feet, stories },
+    section: HEIGHT_SECTION,
+    originalText: `${stories} stories, ${feet} feet`,
+  };
+}
+
+/**
  * Sourced standards keyed by built form district name (as the GIS layer spells
- * it, e.g. "Interior 2"). EMPTY by design — see the file header. Do not add a
- * row from memory; add it only from the ordinance text with a real section.
+ * it, e.g. "Interior 2"). Currently carries maximum height only; FAR, lot
+ * coverage, and yards are conditional on the primary district and/or use (see
+ * the header) and are not represented as built-form-only scalars, so they stay
+ * Unresolved. Do not add a row from memory — only from the ordinance text with
+ * its real section.
  */
 export const MINNEAPOLIS_BUILT_FORM_STANDARDS: Readonly<
   Record<string, BuiltFormStandards>
-> = {};
+> = {
+  "Interior 1": { maxHeight: height(35, 2.5) },
+  "Interior 2": { maxHeight: height(35, 2.5) },
+  "Interior 3": { maxHeight: height(42, 3) },
+  "Corridor 3": { maxHeight: height(42, 3) },
+  "Corridor 4": { maxHeight: height(56, 4) },
+  "Corridor 6": { maxHeight: height(84, 6) },
+  "Transit 10": { maxHeight: height(140, 10) },
+  "Transit 15": { maxHeight: height(210, 15) },
+  "Transit 20": { maxHeight: height(280, 20) },
+  Parks: { maxHeight: height(35, 2.5) },
+  Production: { maxHeight: height(140, 10) },
+};
 
 export interface BuiltFormRuleContext {
   /** Resolved built form district name, e.g. "Interior 2". */

@@ -12,7 +12,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { MinneapolisZoningProvider } from "@/lib/integrations/us-minneapolis/index.js";
-import { isEvidence } from "@/lib/jurisdiction/evidence.js";
+import { isEvidence, isUnresolved } from "@/lib/jurisdiction/evidence.js";
 import { createParcelIdentity } from "@/lib/jurisdiction/identifiers.js";
 import type { PolygonCoordinates } from "@/lib/jurisdiction/providers.js";
 
@@ -48,12 +48,16 @@ suite("MinneapolisZoningProvider (live)", () => {
       }
       expect(env.zoningDistrict.provenance).toBe("official");
       expect(env.zoningDistrict.value).toBe("UN2");
-      // By-right rules are not sourced yet — they must stay Unresolved, and the
-      // gap message proves the built form district (Interior 2) resolved live.
-      if (!("kind" in env.maxHeight) || env.maxHeight.kind !== "unresolved") {
-        throw new Error("expected an unsourced (Unresolved) height");
+      // The built form district (Interior 2) resolves live and carries a sourced
+      // by-right height (Table 540-6: 35 ft), as an unverified official rule.
+      if (!isEvidence(env.maxHeight)) {
+        throw new Error("expected a sourced height rule");
       }
-      expect(env.maxHeight.requiredAction).toContain("Interior 2");
+      expect(env.maxHeight.provenance).toBe("official");
+      expect(env.maxHeight.verification).toBe("unverified");
+      expect(env.maxHeight.value.toFeet()).toBeCloseTo(35);
+      // FAR stays Unresolved (conditional on primary district + use).
+      expect(isUnresolved(env.maxFar)).toBe(true);
     },
     20_000,
   );

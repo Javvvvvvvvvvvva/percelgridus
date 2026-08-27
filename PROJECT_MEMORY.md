@@ -141,25 +141,33 @@ a translation.
      split-zoned parcel (either layer) returns `Unresolved`, never a mis-picked
      district.
      - By-right **numeric standards** are keyed by the built form district in a
-       sourced rule table (`built-form-rules.ts`). That table is **intentionally
-       empty**: the ordinance text hosts (municode.com, minneapolis2040.com) are
-       **egress-blocked here**, so no number was transcribed — a cited-but-
-       unsourced value is exactly what §2 forbids. A district with no row yields
-       `Unresolved` for every numeric field (message names the built form
-       district + Chapter 540). When a row is added straight from the ordinance
-       (exact section, verbatim text, effective date) each value flows through
-       as an `official` rule at `verification: "unverified"`, which the approval
-       gate already treats as a blocker — a preliminary reference, not a legal
-       maximum. Allowed uses (Ch. 545), parking (Ch. 541), overlays, and
-       discretionary approvals also stay `Unresolved`.
-     - Pure parsers fixture-tested (single/none/split/error for both layers) and
-       the rule machinery tested via injected sourced standards; live smoke
-       gated on `MPLS_ZONING_LIVE=1` (verified green → UN2 + Interior 2).
-       `MinneapolisPendingZoningProvider` retained as the all-Unresolved offline
-       placeholder.
-     - **To seed real by-right numbers:** allowlist an ordinance host so the
-       values can be fetched and cited, or hand-enter a district's Chapter 540
-       standards into `MINNEAPOLIS_BUILT_FORM_STANDARDS` with their sections.
+       sourced rule table (`built-form-rules.ts`). Maximum **HEIGHT** is seeded
+       for the 11 districts whose GIS name matches Minneapolis Code § 540.410,
+       Table 540-6 exactly (Interior 1/2/3, Corridor 3/4/6, Transit 10/15/20,
+       Parks, Production) — transcribed verbatim from the City's published
+       Chapter 540, fetched via `curl` after the ordinance host
+       (`minneapolis2040.com`) was allowlisted. Each is an `official` rule at
+       `verification: "unverified"`, which the approval gate treats as a blocker:
+       a preliminary reference subject to Table 540-7 use limits, never a legal
+       max. Not seeded (stay Unresolved): "Core 50" (Table 540-6 = "No limit")
+       and "Transit 30A/30B" (GIS splits them; the ordinance lists one
+       "Transit 30" — needs reconciliation).
+     - **FAR** (Table 540-2), **lot coverage** (Table 540-23), and **yards**
+       (§ 540.8xx) are conditional on the primary district category and/or the
+       building use, so a single built-form-keyed scalar would misrepresent them
+       — they stay `Unresolved` until the envelope is parameterized by primary
+       district + use (the natural next step). Allowed uses (Ch. 545), parking
+       (Ch. 541), overlays, and discretionary approvals also stay `Unresolved`.
+     - Pure parsers fixture-tested (single/none/split/error for both layers);
+       the rule machinery tested via injected sourced standards AND the seeded
+       height; live smoke gated on `MPLS_ZONING_LIVE=1` (verified green →
+       UN2 + Interior 2, height 35 ft). `MinneapolisPendingZoningProvider`
+       retained as the all-Unresolved offline placeholder.
+     - **Egress note:** the ordinance hosts (`minneapolis2040.com`,
+       `library.municode.com`) are reachable via `curl` but the WebFetch tool's
+       egress path still blocks them, so the PDF is fetched with `curl` and read
+       with `pymupdf`. To seed more standards, extend the table from the
+       ordinance text with exact sections; do not transcribe from memory.
 5. Only then bring in a persistence layer with USD/decimal columns and the
    UUID/APN split from `identifiers.ts`.
 
