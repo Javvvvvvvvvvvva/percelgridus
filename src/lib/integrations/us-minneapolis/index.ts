@@ -33,14 +33,17 @@ export type {
 } from "./built-form-response.js";
 
 export {
-  builtFormNumericEnvelope,
+  resolveNumericEnvelope,
+  primaryCategoryFromDistrict,
   MINNEAPOLIS_BUILT_FORM_STANDARDS,
 } from "./built-form-rules.js";
 export type {
   SourcedValue,
   BuiltFormStandards,
   BuiltFormNumericEnvelope,
-  BuiltFormRuleContext,
+  NumericEnvelopeContext,
+  PrimaryCategory,
+  ZoningUseClass,
 } from "./built-form-rules.js";
 
 export {

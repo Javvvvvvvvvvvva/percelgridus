@@ -45,6 +45,7 @@ export type {
   ParcelProvider,
   ByRightEnvelope,
   ZoningEvidenceProvider,
+  DevelopmentIntent,
   FloodHazard,
   TerrainSummary,
   HazardProvider,

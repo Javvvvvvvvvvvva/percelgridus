@@ -8,11 +8,11 @@ import {
   parseZoningDistrict,
   parseZoningEnvelope,
   parseBuiltFormDistrict,
-  builtFormNumericEnvelope,
+  resolveNumericEnvelope,
+  primaryCategoryFromDistrict,
   MINNEAPOLIS_BUILT_FORM_STANDARDS,
   type ZoningQueryResponse,
-  type BuiltFormStandards,
-  type BuiltFormRuleContext,
+  type NumericEnvelopeContext,
 } from "@/lib/integrations/us-minneapolis/index.js";
 import {
   approvalBlockers,
@@ -151,20 +151,35 @@ describe("MinneapolisZoningProvider", () => {
     expect(env.zoningDistrict.source?.locator).toBe(primaryUrl);
   });
 
-  it("resolves the built form height from Table 540-6, conditional rules stay Unresolved", async () => {
+  it("resolves height and (via primary category) lot coverage; FAR waits on use", async () => {
     const provider = new MinneapolisZoningProvider({
       fetchImpl: routedFetch("mpls-zoning-un2", "mpls-built-form-i2"),
       now: () => new Date("2026-08-26T00:00:00Z"),
     });
     const env = await provider.envelopeFor(identity(), SQUARE);
-    // Interior 2 has a sourced height (35 ft) — an unverified official rule.
+    // Interior 2 height (35 ft) — an unverified official rule.
     if (!isEvidence(env.maxHeight)) throw new Error("expected a height rule");
     expect(env.maxHeight.value.toFeet()).toBeCloseTo(35);
-    expect(env.maxHeight.verification).toBe("unverified");
-    // FAR / coverage / setbacks are conditional and remain Unresolved.
+    // UN2 -> un-rm category resolves Interior 2 coverage (45%) with no use input.
+    if (!isEvidence(env.maxLotCoverage)) throw new Error("expected coverage");
+    expect(env.maxLotCoverage.value).toBeCloseTo(0.45);
+    // FAR needs the proposed use, not supplied here.
     expect(isUnresolved(env.maxFar)).toBe(true);
-    expect(isUnresolved(env.maxLotCoverage)).toBe(true);
     expect(isUnresolved(env.minSetbacks)).toBe(true);
+  });
+
+  it("resolves FAR when the development intent supplies a use class", async () => {
+    const provider = new MinneapolisZoningProvider({
+      fetchImpl: routedFetch("mpls-zoning-un2", "mpls-built-form-i2"),
+      now: () => new Date("2026-08-26T00:00:00Z"),
+    });
+    const env = await provider.envelopeFor(identity(), SQUARE, {
+      useClass: "single-family",
+    });
+    // Interior 2, UN/RM, residential 1-3 units -> FAR 0.5.
+    if (!isEvidence(env.maxFar)) throw new Error("expected a FAR rule");
+    expect(env.maxFar.value).toBe(0.5);
+    expect(env.maxFar.verification).toBe("unverified");
   });
 
   it("returns an Unresolved district without geometry, never a fetch", async () => {
@@ -240,46 +255,104 @@ describe("parseBuiltFormDistrict", () => {
   });
 });
 
-describe("builtFormNumericEnvelope", () => {
-  const ctx: BuiltFormRuleContext = {
+describe("primaryCategoryFromDistrict", () => {
+  it("maps UN/RM to un-rm and the CM/DT/PR/TR group to other", () => {
+    expect(primaryCategoryFromDistrict("UN2")).toBe("un-rm");
+    expect(primaryCategoryFromDistrict("RM1")).toBe("un-rm");
+    expect(primaryCategoryFromDistrict("CM3")).toBe("other");
+    expect(primaryCategoryFromDistrict("DT1")).toBe("other");
+    expect(primaryCategoryFromDistrict("PR2")).toBe("other");
+    expect(primaryCategoryFromDistrict("TR1")).toBe("other");
+    expect(primaryCategoryFromDistrict("???")).toBeUndefined();
+  });
+});
+
+describe("resolveNumericEnvelope", () => {
+  const base = {
     builtFormDistrict: "Interior 2",
     retrievalDate: "2026-08-26",
     parserVersion: "test",
     owner: "local zoning professional",
-  };
+  } satisfies Omit<NumericEnvelopeContext, "primaryCategory" | "useClass">;
 
-  it("seeds only sourced, built-form-keyed values (height today)", () => {
-    // Interior 2 carries a sourced height (Table 540-6); the conditional
-    // standards (FAR, coverage, yards) are deliberately absent.
-    const i2 = MINNEAPOLIS_BUILT_FORM_STANDARDS["Interior 2"];
-    expect(i2?.maxHeight?.value.feet).toBe(35);
-    expect(i2?.maxFar).toBeUndefined();
-    expect(i2?.maxLotCoverage).toBeUndefined();
-    // "Core 50" (No limit) and the split "Transit 30A/B" are not seeded.
-    expect(MINNEAPOLIS_BUILT_FORM_STANDARDS["Core 50"]).toBeUndefined();
-    expect(MINNEAPOLIS_BUILT_FORM_STANDARDS["Transit 30A"]).toBeUndefined();
-  });
-
-  it("resolves height for a seeded district, keeping the rest Unresolved", () => {
-    const env = builtFormNumericEnvelope(ctx); // Interior 2
+  it("seeds height for Interior 2 (Table 540-6, 35 ft)", () => {
+    expect(
+      MINNEAPOLIS_BUILT_FORM_STANDARDS["Interior 2"]?.maxHeight?.value.feet,
+    ).toBe(35);
+    const env = resolveNumericEnvelope(base);
     if (!isEvidence(env.maxHeight)) throw new Error("expected a height rule");
-    expect(env.maxHeight.provenance).toBe("official");
     expect(env.maxHeight.verification).toBe("unverified");
     expect(env.maxHeight.value.toFeet()).toBeCloseTo(35);
     expect(env.maxHeight.citation?.ordinanceSection).toContain("540.410");
-    // Conditional standards stay Unresolved and approval-blocking.
-    const gaps: EvidenceOrUnresolved<unknown>[] = [
-      env.maxFar,
-      env.maxLotCoverage,
-      env.minSetbacks,
-    ];
-    expect(gaps.every(isUnresolved)).toBe(true);
-    // The unverified height rule blocks too, so all four are blockers.
-    expect(approvalBlockers([env.maxHeight, ...gaps]).length).toBe(4);
   });
 
-  it("yields Unresolved for every field for a district with no sourced row", () => {
-    const env = builtFormNumericEnvelope({ ...ctx, builtFormDistrict: "Core 50" });
+  it("resolves lot coverage from primary category alone (no use needed)", () => {
+    const env = resolveNumericEnvelope({ ...base, primaryCategory: "un-rm" });
+    if (!isEvidence(env.maxLotCoverage)) throw new Error("expected coverage");
+    expect(env.maxLotCoverage.value).toBeCloseTo(0.45); // Interior 2, UN/RM = 45%
+    expect(env.maxLotCoverage.citation?.ordinanceSection).toContain("540.910");
+    // The "other" category column is 100%.
+    const other = resolveNumericEnvelope({ ...base, primaryCategory: "other" });
+    if (!isEvidence(other.maxLotCoverage)) throw new Error("expected coverage");
+    expect(other.maxLotCoverage.value).toBeCloseTo(1.0);
+  });
+
+  it("keeps coverage Unresolved when the primary category is unknown", () => {
+    const env = resolveNumericEnvelope(base); // no primaryCategory
+    expect(isUnresolved(env.maxLotCoverage)).toBe(true);
+  });
+
+  it("resolves FAR only with both primary category and use class", () => {
+    // Interior 2, UN/RM: residential 1-3 units -> 0.5, all other -> 0.8.
+    const sf = resolveNumericEnvelope({
+      ...base,
+      primaryCategory: "un-rm",
+      useClass: "single-family",
+    });
+    if (!isEvidence(sf.maxFar)) throw new Error("expected FAR");
+    expect(sf.maxFar.value).toBe(0.5);
+    expect(sf.maxFar.citation?.ordinanceSection).toContain("540.110");
+
+    const office = resolveNumericEnvelope({
+      ...base,
+      primaryCategory: "un-rm",
+      useClass: "other",
+    });
+    if (!isEvidence(office.maxFar)) throw new Error("expected FAR");
+    expect(office.maxFar.value).toBe(0.8);
+  });
+
+  it("keeps FAR Unresolved when use class is missing, listing the tiers", () => {
+    const env = resolveNumericEnvelope({ ...base, primaryCategory: "un-rm" });
+    expect(isUnresolved(env.maxFar)).toBe(true);
+    if (isUnresolved(env.maxFar)) {
+      expect(env.maxFar.requiredAction).toContain("use");
+      expect(env.maxFar.requiredAction).toContain("0.5");
+    }
+  });
+
+  it("applies Interior 3 per-unit-count FAR tiers", () => {
+    const mk = (useClass: "two-family" | "three-family") =>
+      resolveNumericEnvelope({
+        ...base,
+        builtFormDistrict: "Interior 3",
+        primaryCategory: "un-rm",
+        useClass,
+      }).maxFar;
+    const two = mk("two-family");
+    const three = mk("three-family");
+    if (!isEvidence(two) || !isEvidence(three)) throw new Error("expected FAR");
+    expect(two.value).toBe(0.6);
+    expect(three.value).toBe(0.7);
+  });
+
+  it("yields Unresolved for a district with no sourced rows (Transit 30A)", () => {
+    const env = resolveNumericEnvelope({
+      ...base,
+      builtFormDistrict: "Transit 30A",
+      primaryCategory: "un-rm",
+      useClass: "other",
+    });
     const fields: EvidenceOrUnresolved<unknown>[] = [
       env.maxFar,
       env.maxLotCoverage,
@@ -290,35 +363,13 @@ describe("builtFormNumericEnvelope", () => {
     expect(approvalBlockers(fields).length).toBe(fields.length);
   });
 
-  it("maps a sourced value to an unverified, approval-blocking official rule", () => {
-    // Injected sourced standards prove the citation/Length machinery without
-    // seeding the shipped (deliberately empty) table.
-    const standards: BuiltFormStandards = {
-      maxHeight: {
-        value: { feet: 35, stories: 3 },
-        section: "§ 540.410",
-        originalText: "Interior 2 ... 35 feet",
-        effectiveDate: "2024-01-01",
-      },
-      maxFar: { value: 0.5, section: "§ 540.430" },
-    };
-    const env = builtFormNumericEnvelope(ctx, standards);
-
-    if (!isEvidence(env.maxHeight)) throw new Error("expected a rule");
-    expect(env.maxHeight.provenance).toBe("official");
-    expect(env.maxHeight.verification).toBe("unverified");
-    expect(env.maxHeight.value.toFeet()).toBeCloseTo(35);
-    expect(env.maxHeight.citation?.ordinanceSection).toBe("§ 540.410");
-    expect(env.maxHeight.citation?.originalText).toContain("35 feet");
-    expect(env.maxHeight.citation?.zoningDistrict).toBe("Interior 2");
-
-    if (!isEvidence(env.maxFar)) throw new Error("expected a rule");
-    expect(env.maxFar.value).toBe(0.5);
-
-    // Unverified official rules still block approval; unsourced fields too.
-    expect(approvalBlockers([env.maxHeight, env.maxFar, env.maxLotCoverage]).length).toBe(
-      3,
-    );
+  it("leaves setbacks Unresolved (yards are contextual, not automated)", () => {
+    const env = resolveNumericEnvelope({
+      ...base,
+      primaryCategory: "un-rm",
+      useClass: "other",
+    });
+    expect(isUnresolved(env.minSetbacks)).toBe(true);
   });
 });
 

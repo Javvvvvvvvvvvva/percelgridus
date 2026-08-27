@@ -56,8 +56,22 @@ suite("MinneapolisZoningProvider (live)", () => {
       expect(env.maxHeight.provenance).toBe("official");
       expect(env.maxHeight.verification).toBe("unverified");
       expect(env.maxHeight.value.toFeet()).toBeCloseTo(35);
-      // FAR stays Unresolved (conditional on primary district + use).
+      // UN2 -> un-rm resolves Interior 2 lot coverage (45%) with no use input.
+      if (!isEvidence(env.maxLotCoverage)) {
+        throw new Error("expected a sourced lot coverage");
+      }
+      expect(env.maxLotCoverage.value).toBeCloseTo(0.45);
+      // FAR needs the proposed use; Unresolved without it.
       expect(isUnresolved(env.maxFar)).toBe(true);
+
+      // Supplying a use class resolves FAR live (residential 1-3 units -> 0.5).
+      const withUse = await provider.envelopeFor(identity, PARCEL, {
+        useClass: "single-family",
+      });
+      if (!isEvidence(withUse.maxFar)) {
+        throw new Error("expected a sourced FAR");
+      }
+      expect(withUse.maxFar.value).toBe(0.5);
     },
     20_000,
   );

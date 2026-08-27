@@ -140,34 +140,42 @@ a translation.
      geometry?)` receives the parcel geometry (as `HazardProvider` does). A
      split-zoned parcel (either layer) returns `Unresolved`, never a mis-picked
      district.
-     - By-right **numeric standards** are keyed by the built form district in a
-       sourced rule table (`built-form-rules.ts`). Maximum **HEIGHT** is seeded
-       for the 11 districts whose GIS name matches Minneapolis Code § 540.410,
-       Table 540-6 exactly (Interior 1/2/3, Corridor 3/4/6, Transit 10/15/20,
-       Parks, Production) — transcribed verbatim from the City's published
-       Chapter 540, fetched via `curl` after the ordinance host
-       (`minneapolis2040.com`) was allowlisted. Each is an `official` rule at
-       `verification: "unverified"`, which the approval gate treats as a blocker:
-       a preliminary reference subject to Table 540-7 use limits, never a legal
-       max. Not seeded (stay Unresolved): "Core 50" (Table 540-6 = "No limit")
-       and "Transit 30A/30B" (GIS splits them; the ordinance lists one
-       "Transit 30" — needs reconciliation).
-     - **FAR** (Table 540-2), **lot coverage** (Table 540-23), and **yards**
-       (§ 540.8xx) are conditional on the primary district category and/or the
-       building use, so a single built-form-keyed scalar would misrepresent them
-       — they stay `Unresolved` until the envelope is parameterized by primary
-       district + use (the natural next step). Allowed uses (Ch. 545), parking
-       (Ch. 541), overlays, and discretionary approvals also stay `Unresolved`.
-     - Pure parsers fixture-tested (single/none/split/error for both layers);
-       the rule machinery tested via injected sourced standards AND the seeded
-       height; live smoke gated on `MPLS_ZONING_LIVE=1` (verified green →
-       UN2 + Interior 2, height 35 ft). `MinneapolisPendingZoningProvider`
-       retained as the all-Unresolved offline placeholder.
+     - By-right **numeric standards** live in `built-form-rules.ts`, transcribed
+       verbatim from the City's published Chapter 540 (fetched via `curl` after
+       the ordinance host `minneapolis2040.com` was allowlisted). Each resolved
+       value is an `official` rule at `verification: "unverified"`, which the
+       approval gate treats as a blocker — a preliminary reference, never a
+       legal max. Crucially, each standard is resolved from EXACTLY the inputs
+       the ordinance conditions it on (`resolveNumericEnvelope`):
+       - **HEIGHT** (§ 540.410, Table 540-6): built form district ALONE.
+       - **LOT COVERAGE** (§ 540.910, Table 540-23): built form × primary
+         district CATEGORY (`primaryCategoryFromDistrict`: UN/RM vs the CM/DT/PR/
+         TR group), derived from the resolved primary district — no use needed.
+       - **FAR** (§ 540.110, Table 540-2): built form × primary category ×
+         building USE class. The `ZoningEvidenceProvider.envelopeFor(identity,
+         geometry?, intent?)` contract gained a `DevelopmentIntent` param; the
+         adapter narrows `intent.useClass` to `ZoningUseClass`
+         (single/two/three-family, institutional-civic, other). Without a use
+         class FAR is `Unresolved` (the gap message lists the tiers).
+       - **SETBACKS/yards** (§ 540.8xx): contextual (front-yard averaging) — not
+         automated; stays `Unresolved`. Allowed uses (Ch. 545), parking
+         (Ch. 541), overlays, and discretionary approvals also stay `Unresolved`.
+       No value is ever collapsed across the inputs it truly depends on.
+       Unseeded (stay Unresolved): "Transit 30A/30B" (GIS splits the ordinance's
+       single "Transit 30" — needs reconciliation); "Core 50" has no height
+       (Table 540-6 = "No limit") but does carry FAR (16.0) and coverage.
+     - Pure parsers fixture-tested (both layers); `resolveNumericEnvelope` tested
+       for height/coverage/FAR incl. the Interior 3 per-unit tiers and the
+       category/use gating; provider tested with an injected fetch and a
+       `DevelopmentIntent`. Live smoke (`MPLS_ZONING_LIVE=1`) verified green →
+       UN2 + Interior 2, height 35 ft, coverage 45%, FAR 0.5 (single-family).
+       `MinneapolisPendingZoningProvider` retained as the all-Unresolved offline
+       placeholder.
      - **Egress note:** the ordinance hosts (`minneapolis2040.com`,
        `library.municode.com`) are reachable via `curl` but the WebFetch tool's
        egress path still blocks them, so the PDF is fetched with `curl` and read
-       with `pymupdf`. To seed more standards, extend the table from the
-       ordinance text with exact sections; do not transcribe from memory.
+       with `pymupdf`. To add standards, extend the tables from the ordinance
+       text with exact sections; do not transcribe from memory.
 5. Only then bring in a persistence layer with USD/decimal columns and the
    UUID/APN split from `identifiers.ts`.
 

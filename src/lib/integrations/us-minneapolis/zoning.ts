@@ -27,12 +27,19 @@ import type { RuleCitation } from "../../jurisdiction/evidence.js";
 import type { ParcelIdentity } from "../../jurisdiction/identifiers.js";
 import type {
   ByRightEnvelope,
+  DevelopmentIntent,
   PolygonCoordinates,
   ZoningEvidenceProvider,
 } from "../../jurisdiction/providers.js";
 import type { BuiltFormQueryResponse } from "./built-form-response.js";
-import { builtFormNumericEnvelope } from "./built-form-rules.js";
-import type { BuiltFormNumericEnvelope } from "./built-form-rules.js";
+import {
+  primaryCategoryFromDistrict,
+  resolveNumericEnvelope,
+} from "./built-form-rules.js";
+import type {
+  BuiltFormNumericEnvelope,
+  ZoningUseClass,
+} from "./built-form-rules.js";
 import { parseBuiltFormDistrict } from "./parse-built-form.js";
 import { buildEnvelope, parseZoningDistrict } from "./parse-zoning.js";
 import type { ZoningQueryResponse } from "./zoning-response.js";
@@ -156,6 +163,7 @@ export class MinneapolisZoningProvider implements ZoningEvidenceProvider {
   async envelopeFor(
     identity: ParcelIdentity,
     geometry?: PolygonCoordinates,
+    intent?: DevelopmentIntent,
   ): Promise<ByRightEnvelope> {
     const subject = identity.normalizedAddress ?? `site ${identity.siteId}`;
 
@@ -200,11 +208,20 @@ export class MinneapolisZoningProvider implements ZoningEvidenceProvider {
     });
 
     // Numeric standards are keyed by the built form district; only compute them
-    // when that district resolved cleanly.
+    // when that district resolved cleanly. Coverage and FAR additionally need
+    // the primary district category (derived from the resolved primary
+    // district) and, for FAR, the proposed use class.
     let numeric: BuiltFormNumericEnvelope | undefined;
     if (isEvidence(builtForm)) {
-      numeric = builtFormNumericEnvelope({
+      const primaryCategory = isEvidence(district)
+        ? primaryCategoryFromDistrict(district.value)
+        : undefined;
+      numeric = resolveNumericEnvelope({
         builtFormDistrict: builtForm.value,
+        ...(primaryCategory !== undefined ? { primaryCategory } : {}),
+        ...(normalizeUseClass(intent?.useClass) !== undefined
+          ? { useClass: normalizeUseClass(intent?.useClass)! }
+          : {}),
         retrievalDate,
         parserVersion: this.parserVersion,
         owner: ZONING_OWNER,
@@ -217,4 +234,19 @@ export class MinneapolisZoningProvider implements ZoningEvidenceProvider {
   citationFor(section: string): RuleCitation {
     return minneapolisCitation(section, this.parserVersion, isoDate(this.now()));
   }
+}
+
+const USE_CLASSES: readonly ZoningUseClass[] = [
+  "single-family",
+  "two-family",
+  "three-family",
+  "institutional-civic",
+  "other",
+];
+
+/** Narrow the jurisdiction-agnostic intent string to a known use class. */
+function normalizeUseClass(useClass?: string): ZoningUseClass | undefined {
+  if (useClass === undefined) return undefined;
+  const c = useClass.trim().toLowerCase();
+  return USE_CLASSES.find((u) => u === c);
 }

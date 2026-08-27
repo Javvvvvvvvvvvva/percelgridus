@@ -90,6 +90,16 @@ export interface ByRightEnvelope {
   readonly discretionaryApprovals: readonly Unresolved[];
 }
 
+/**
+ * The proposed development, to the extent the by-right envelope depends on it.
+ * Some standards (e.g. floor area ratio) are conditional on the building's use;
+ * without it those fields resolve to `Unresolved`. `useClass` is a
+ * jurisdiction-interpreted string so the core stays country-agnostic.
+ */
+export interface DevelopmentIntent {
+  readonly useClass?: string;
+}
+
 export interface ZoningEvidenceProvider {
   readonly id: string; // e.g. "minneapolis-zoning-adapter@2026.08"
   readonly jurisdictionId: string;
@@ -100,11 +110,14 @@ export interface ZoningEvidenceProvider {
    * the parcel geometry (as produced by {@link ParcelProvider} in
    * `ParcelRecord.geometry`) is passed the same way {@link HazardProvider}
    * takes it. It is optional: without geometry an adapter that needs a spatial
-   * lookup returns the district as `Unresolved` rather than guessing.
+   * lookup returns the district as `Unresolved` rather than guessing. `intent`
+   * carries the proposed building where a standard depends on it (e.g. FAR);
+   * without it, use-conditional fields resolve to `Unresolved`.
    */
   envelopeFor(
     identity: ParcelIdentity,
     geometry?: PolygonCoordinates,
+    intent?: DevelopmentIntent,
   ): Promise<ByRightEnvelope>;
   /** Citation template the adapter stamps onto each parsed rule. */
   citationFor(section: string): RuleCitation;
