@@ -206,6 +206,25 @@ a translation.
      an explicit `currency` check — no float near a dollar value.
    - The in-memory impl is dependency-free (no DB in the library core); wiring a
      real Postgres is a straight map onto these tables.
+6. **Intake pipeline (MVP spine)** — `src/lib/intake/`. `intakeSite(rawAddress,
+   { profile, repository }, { intent? })` orchestrates the resolved providers
+   into one due-diligence pass: normalize address → parcel by point → flood +
+   terrain + zoning envelope on the parcel geometry → persist the site under its
+   UUID → collect `approvalBlockers` over the whole result. It only orchestrates;
+   every fact stays Evidence-or-Unresolved and it never invents a value or
+   defaults a gap. Degrades honestly: an unresolved address stops before the
+   parcel (nothing persisted); a geometry-less parcel makes hazards tracked gaps
+   but still persists the identity. Unit-tested with stub providers (happy path,
+   address/parcel gaps, geometry-less); live smoke gated on `INTAKE_LIVE=1`
+   asserts the pipeline's internal consistency end-to-end against the real
+   Minneapolis profile.
+   - **Known limitation surfaced by the live run:** the Census geocoder point is
+     interpolated and often lands ~10–30 m off a small residential parcel (the
+     parcel's OWN address can miss it), so `byPoint` returns Unresolved for many
+     real addresses. The pipeline reports that honestly and never snaps to a
+     neighboring lot (wrong owner/APN). **Next step:** a
+     `ParcelProvider.byAddress` that matches the county layer's own address
+     attributes (HOUSE_NO/STREET_NM) instead of a fragile geocoded point.
 
 ### Runtime egress note
 
