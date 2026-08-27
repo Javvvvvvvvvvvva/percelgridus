@@ -72,6 +72,12 @@ suite("MinneapolisZoningProvider (live)", () => {
         throw new Error("expected a sourced FAR");
       }
       expect(withUse.maxFar.value).toBe(0.5);
+
+      // UN2 permits 1–3 family dwellings by right (§ 545.100, Table 545-1).
+      if (!isEvidence(env.allowedUses)) {
+        throw new Error("expected sourced allowed uses");
+      }
+      expect(env.allowedUses.value).toContain("three-family dwelling");
     },
     20_000,
   );

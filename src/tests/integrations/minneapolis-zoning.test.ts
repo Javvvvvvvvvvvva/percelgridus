@@ -8,6 +8,7 @@ import {
   parseZoningDistrict,
   parseZoningEnvelope,
   parseBuiltFormDistrict,
+  resolveAllowedUses,
   resolveNumericEnvelope,
   primaryCategoryFromDistrict,
   MINNEAPOLIS_BUILT_FORM_STANDARDS,
@@ -166,6 +167,9 @@ describe("MinneapolisZoningProvider", () => {
     // FAR needs the proposed use, not supplied here.
     expect(isUnresolved(env.maxFar)).toBe(true);
     expect(isUnresolved(env.minSetbacks)).toBe(true);
+    // UN2 permits 1–3 family dwellings by right (§ 545.100).
+    if (!isEvidence(env.allowedUses)) throw new Error("expected allowed uses");
+    expect(env.allowedUses.value).toContain("three-family dwelling");
   });
 
   it("resolves FAR when the development intent supplies a use class", async () => {
@@ -370,6 +374,30 @@ describe("resolveNumericEnvelope", () => {
       useClass: "other",
     });
     expect(isUnresolved(env.minSetbacks)).toBe(true);
+  });
+});
+
+describe("resolveAllowedUses", () => {
+  const ctx = { retrievalDate: "2026-08-26", parserVersion: "test" };
+
+  it("attests 1–3 family dwellings by right in UN districts (an unverified rule)", () => {
+    for (const code of ["UN1", "UN2", "UN3", "RM1", "RM2", "CM1", "CM2"]) {
+      const r = resolveAllowedUses(code, ctx);
+      if (!isEvidence(r)) throw new Error(`expected evidence for ${code}`);
+      expect(r.verification).toBe("unverified");
+      expect(r.value).toContain("single-family dwelling");
+      expect(r.value).toContain("three-family dwelling");
+      expect(r.citation?.ordinanceSection).toContain("545.100");
+      // The note must scope the answer to residential dwellings.
+      expect(r.note).toContain("1–3 family");
+    }
+  });
+
+  it("returns Unresolved where new 1–3 family is not permitted by right", () => {
+    for (const code of ["RM3", "CM3", "DT1", "PR1", "TR1"]) {
+      const r = resolveAllowedUses(code, ctx);
+      expect(isUnresolved(r)).toBe(true);
+    }
   });
 });
 

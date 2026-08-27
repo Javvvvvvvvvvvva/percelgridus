@@ -158,8 +158,19 @@ a translation.
          (single/two/three-family, institutional-civic, other). Without a use
          class FAR is `Unresolved` (the gap message lists the tiers).
        - **SETBACKS/yards** (§ 540.8xx): contextual (front-yard averaging) — not
-         automated; stays `Unresolved`. Allowed uses (Ch. 545), parking
-         (Ch. 541), overlays, and discretionary approvals also stay `Unresolved`.
+         automated; stays `Unresolved`. Parking (Ch. 541), overlays, and
+         discretionary approvals also stay `Unresolved`.
+       - **ALLOWED USES** (§ 545.100, Table 545-1): keyed by the primary (use)
+         district (`use-rules.ts`, `resolveAllowedUses`). Scoped deliberately to
+         the by-right **1–3 family residential dwelling** row — the one cleanly
+         extractable row that matches the documented Minneapolis 2040 reform
+         (single/two/three-family permitted by right in UN1/2/3, RM1/2, CM1/2).
+         `allowedUses` carries those dwelling types with an explicit note that it
+         covers residential dwellings ONLY; the full Table 545-1 (other use
+         groups, 4+ unit and mixed-use dwellings, conditional uses) is not
+         transcribed — that matrix is too large to verify in-session and a
+         partial list would misread as exhaustive. Districts without new 1–3
+         family by right return `Unresolved`.
        No value is ever collapsed across the inputs it truly depends on.
        Unseeded (stay Unresolved): "Transit 30A/30B" (GIS splits the ordinance's
        single "Transit 30" — needs reconciliation); "Core 50" has no height

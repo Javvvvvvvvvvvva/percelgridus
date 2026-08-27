@@ -24,6 +24,9 @@ export type {
   ZoningAttributes,
 } from "./zoning-response.js";
 
+export { resolveAllowedUses } from "./use-rules.js";
+export type { AllowedUsesContext } from "./use-rules.js";
+
 export { parseBuiltFormDistrict } from "./parse-built-form.js";
 export type { ParseBuiltFormContext } from "./parse-built-form.js";
 export type {

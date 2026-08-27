@@ -42,6 +42,8 @@ import type {
 } from "./built-form-rules.js";
 import { parseBuiltFormDistrict } from "./parse-built-form.js";
 import { buildEnvelope, parseZoningDistrict } from "./parse-zoning.js";
+import { resolveAllowedUses } from "./use-rules.js";
+import type { EvidenceOrUnresolved } from "../../jurisdiction/evidence.js";
 import type { ZoningQueryResponse } from "./zoning-response.js";
 import {
   MINNEAPOLIS_JURISDICTION_ID,
@@ -228,7 +230,16 @@ export class MinneapolisZoningProvider implements ZoningEvidenceProvider {
       });
     }
 
-    return buildEnvelope(district, numeric);
+    // Allowed uses come from the primary (use) district, § 545.100.
+    let allowedUses: EvidenceOrUnresolved<readonly string[]> | undefined;
+    if (isEvidence(district)) {
+      allowedUses = resolveAllowedUses(district.value, {
+        retrievalDate,
+        parserVersion: this.parserVersion,
+      });
+    }
+
+    return buildEnvelope(district, numeric, allowedUses);
   }
 
   citationFor(section: string): RuleCitation {

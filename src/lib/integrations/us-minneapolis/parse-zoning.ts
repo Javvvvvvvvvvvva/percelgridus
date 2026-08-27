@@ -103,12 +103,13 @@ export function parseZoningDistrict(
 export function buildEnvelope(
   district: EvidenceOrUnresolved<string>,
   numeric?: BuiltFormNumericEnvelope,
+  allowedUses?: EvidenceOrUnresolved<readonly string[]>,
 ): ByRightEnvelope {
   const gaps = pendingRuleGaps();
   return {
     jurisdictionId: MINNEAPOLIS_JURISDICTION_ID,
     zoningDistrict: district,
-    allowedUses: gaps.allowedUses,
+    allowedUses: allowedUses ?? gaps.allowedUses,
     maxFar: numeric?.maxFar ?? gaps.maxFar,
     maxLotCoverage: numeric?.maxLotCoverage ?? gaps.maxLotCoverage,
     maxHeight: numeric?.maxHeight ?? gaps.maxHeight,
