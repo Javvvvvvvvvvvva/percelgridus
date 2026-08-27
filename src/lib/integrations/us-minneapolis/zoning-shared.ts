@@ -58,14 +58,20 @@ export function pendingRuleGaps(): PendingRuleGaps {
 }
 
 /**
- * Citation template for a section of the Minneapolis ordinance. The parsed
- * value is filled in by the real rule parser once it exists; here it documents
- * the source addressing every parsed rule will carry.
+ * Citation for a section of the Minneapolis ordinance. Documents the source
+ * addressing every parsed rule carries. `opts` attaches the verbatim source
+ * text, the section's effective date, and the built form / zoning district the
+ * rule applies to, when known.
  */
 export function minneapolisCitation(
   section: string,
   parserVersion: string,
   retrievalDate: string,
+  opts: {
+    originalText?: string;
+    effectiveDate?: string;
+    zoningDistrict?: string;
+  } = {},
 ): RuleCitation {
   return {
     jurisdictionId: MINNEAPOLIS_JURISDICTION_ID,
@@ -76,6 +82,15 @@ export function minneapolisCitation(
     ordinanceSection: section,
     retrievalDate,
     parserVersion,
+    ...(opts.originalText !== undefined
+      ? { originalText: opts.originalText }
+      : {}),
+    ...(opts.effectiveDate !== undefined
+      ? { effectiveDate: opts.effectiveDate }
+      : {}),
+    ...(opts.zoningDistrict !== undefined
+      ? { zoningDistrict: opts.zoningDistrict }
+      : {}),
   };
 }
 

@@ -129,19 +129,37 @@ a translation.
    README-US §2/§4. Each pending piece is swapped for its real source in place,
    with no downstream shape change. Per-provider network config threads through
    for tests/proxy fetch.
-   - **Zoning (district live-verified):** `MinneapolisZoningProvider`
-     (`us-minneapolis/zoning.ts`) resolves the official zoning **district** from
-     the City of Minneapolis "Planning Primary Zoning" ArcGIS layer via a
-     polygon-intersects query — the `ZoningEvidenceProvider` contract was
-     extended so `envelopeFor(identity, geometry?)` receives the parcel geometry
-     (as `HazardProvider` does). A split-zoned parcel returns `Unresolved`, not a
-     mis-picked district. By-right **numeric rules** (FAR/height/setbacks/
-     coverage/parking), allowed uses, overlays, and discretionary approvals stay
-     `Unresolved` (no ordinance rule text parsed yet), per §2 "no safe hard-coded
-     zoning engine". Pure parser fixture-tested; live smoke gated on
-     `MPLS_ZONING_LIVE=1` (verified green → UN2 for a known parcel).
-     `MinneapolisPendingZoningProvider` is retained as the all-Unresolved
-     offline placeholder.
+   - **Zoning (both districts live-verified; by-right numbers gated on egress):**
+     `MinneapolisZoningProvider` (`us-minneapolis/zoning.ts`) queries TWO
+     official City layers by polygon-intersects: "Planning Primary Zoning" →
+     the primary/use district (e.g. `UN2`), and "Zoning Built Form" → the built
+     form district (e.g. `Interior 2 / BFI2`). This encodes the real Minneapolis
+     split: **use** comes from the primary district, **form** (height, FAR,
+     setbacks, lot coverage) from the built form district (Chapter 540). The
+     `ZoningEvidenceProvider` contract was extended so `envelopeFor(identity,
+     geometry?)` receives the parcel geometry (as `HazardProvider` does). A
+     split-zoned parcel (either layer) returns `Unresolved`, never a mis-picked
+     district.
+     - By-right **numeric standards** are keyed by the built form district in a
+       sourced rule table (`built-form-rules.ts`). That table is **intentionally
+       empty**: the ordinance text hosts (municode.com, minneapolis2040.com) are
+       **egress-blocked here**, so no number was transcribed — a cited-but-
+       unsourced value is exactly what §2 forbids. A district with no row yields
+       `Unresolved` for every numeric field (message names the built form
+       district + Chapter 540). When a row is added straight from the ordinance
+       (exact section, verbatim text, effective date) each value flows through
+       as an `official` rule at `verification: "unverified"`, which the approval
+       gate already treats as a blocker — a preliminary reference, not a legal
+       maximum. Allowed uses (Ch. 545), parking (Ch. 541), overlays, and
+       discretionary approvals also stay `Unresolved`.
+     - Pure parsers fixture-tested (single/none/split/error for both layers) and
+       the rule machinery tested via injected sourced standards; live smoke
+       gated on `MPLS_ZONING_LIVE=1` (verified green → UN2 + Interior 2).
+       `MinneapolisPendingZoningProvider` retained as the all-Unresolved offline
+       placeholder.
+     - **To seed real by-right numbers:** allowlist an ordinance host so the
+       values can be fetched and cited, or hand-enter a district's Chapter 540
+       standards into `MINNEAPOLIS_BUILT_FORM_STANDARDS` with their sections.
 5. Only then bring in a persistence layer with USD/decimal columns and the
    UUID/APN split from `identifiers.ts`.
 

@@ -14,6 +14,7 @@ import type { IsoDate, SourceRef } from "../../jurisdiction/evidence.js";
 import { officialFact, unresolved } from "../../jurisdiction/evidence.js";
 import type { EvidenceOrUnresolved } from "../../jurisdiction/evidence.js";
 import type { ByRightEnvelope } from "../../jurisdiction/providers.js";
+import type { BuiltFormNumericEnvelope } from "./built-form-rules.js";
 import type { ZoningQueryResponse } from "./zoning-response.js";
 import {
   MINNEAPOLIS_JURISDICTION_ID,
@@ -93,22 +94,25 @@ export function parseZoningDistrict(
 }
 
 /**
- * Assemble a full by-right envelope from a resolved (or unresolved) district.
- * The district is the only value sourced today; every numeric rule, the
- * allowed-use list, overlays, and discretionary approvals stay Unresolved.
+ * Assemble a full by-right envelope from a resolved (or unresolved) primary
+ * district and, optionally, the numeric standards the built form district
+ * governs (height, FAR, lot coverage, setbacks — Chapter 540). Fields with no
+ * source — allowed uses, parking, overlays, discretionary approvals, and any
+ * built form standard not passed in — stay Unresolved.
  */
 export function buildEnvelope(
   district: EvidenceOrUnresolved<string>,
+  numeric?: BuiltFormNumericEnvelope,
 ): ByRightEnvelope {
   const gaps = pendingRuleGaps();
   return {
     jurisdictionId: MINNEAPOLIS_JURISDICTION_ID,
     zoningDistrict: district,
     allowedUses: gaps.allowedUses,
-    maxFar: gaps.maxFar,
-    maxLotCoverage: gaps.maxLotCoverage,
-    maxHeight: gaps.maxHeight,
-    minSetbacks: gaps.minSetbacks,
+    maxFar: numeric?.maxFar ?? gaps.maxFar,
+    maxLotCoverage: numeric?.maxLotCoverage ?? gaps.maxLotCoverage,
+    maxHeight: numeric?.maxHeight ?? gaps.maxHeight,
+    minSetbacks: numeric?.minSetbacks ?? gaps.minSetbacks,
     minParkingStalls: gaps.minParkingStalls,
     overlays: gaps.overlays,
     discretionaryApprovals: gaps.discretionaryApprovals,

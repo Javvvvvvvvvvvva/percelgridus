@@ -48,10 +48,12 @@ suite("MinneapolisZoningProvider (live)", () => {
       }
       expect(env.zoningDistrict.provenance).toBe("official");
       expect(env.zoningDistrict.value).toBe("UN2");
-      // By-right rules are not sourced yet — they must stay Unresolved.
-      expect("kind" in env.maxFar && env.maxFar.kind === "unresolved").toBe(
-        true,
-      );
+      // By-right rules are not sourced yet — they must stay Unresolved, and the
+      // gap message proves the built form district (Interior 2) resolved live.
+      if (!("kind" in env.maxHeight) || env.maxHeight.kind !== "unresolved") {
+        throw new Error("expected an unsourced (Unresolved) height");
+      }
+      expect(env.maxHeight.requiredAction).toContain("Interior 2");
     },
     20_000,
   );

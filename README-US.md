@@ -153,7 +153,7 @@ Unknown setbacks, overlays, easements, utilities, title restrictions, environmen
 | Demographic and market context | U.S. Census ACS and other licensed market sources | Context only; protected-class data must not be used to rank people, neighborhoods, or creditworthiness |
 | Flood | [FEMA National Flood Hazard Layer](https://www.fema.gov/flood-maps/national-flood-hazard-layer) | Preliminary flood layer with source and access date |
 | Terrain | [USGS 3D Elevation Program](https://www.usgs.gov/3d-elevation-program) | Slope, elevation, and early grading context; USGS states 3DEP products are free and without use restrictions |
-| Zoning district (Minneapolis) | [City of Minneapolis Planning Primary Zoning](https://opendata.minneapolismn.gov/datasets/planning-primary-zoning) | Official primary zoning district only; by-right numeric rules stay Unresolved until the ordinance is parsed and a professional confirms (see §2) |
+| Zoning districts (Minneapolis) | City of Minneapolis [Planning Primary Zoning](https://opendata.minneapolismn.gov/datasets/planning-primary-zoning) (use) + Zoning Built Form (form, Chapter 540) | Official primary + built form districts; by-right numeric standards (height/FAR/setbacks/coverage) are keyed by the built form district but stay Unresolved until the ordinance text is sourced and a professional confirms (see §2) |
 
 ### Jurisdiction adapter
 
