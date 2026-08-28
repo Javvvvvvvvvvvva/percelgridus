@@ -248,6 +248,23 @@ a translation.
    item(s)". This closes the README-US MVP loop: a real parcel from address to a
    source-linked, professional-review-gated decision report.
 
+8. **Development pro forma** — `src/lib/finance/`. `computeProForma(inputs)`
+   underwrites one site: buildable GSF (lot × FAR), footprint (lot × coverage),
+   estimated units, the hard/soft/contingency/total cost stack, and stabilized
+   revenue/returns (gross rent → EGI → NOI → cap-rate value, yield on cost,
+   development profit). Every input is Evidence-or-Unresolved (official value,
+   dated market figure, or explicit user assumption) and every derived line is
+   an `algorithm` value; a line whose inputs are not all resolved comes back
+   Unresolved naming the missing dependency (`derive` combinator), so an
+   unfunded assumption blocks a result instead of defaulting to zero. All money
+   math runs on decimal-exact `Money`. `buildSiteMassingProgram(lotArea, zoning,
+   proForma)` packages the by-right envelope + buildable program (district, lot,
+   FAR, buildable GSF, coverage, footprint, height, setbacks, uses, est. units)
+   — the provenance-tagged hand-off to a site-plan / blueprint designer. Note:
+   the profile's own `financeProfile` is still all-Unresolved (no sourced market
+   data), so a real run supplies user assumptions; wiring dated market sources is
+   the natural finance follow-up.
+
 ### Runtime egress note
 
 Node's global `fetch` (undici) does not honor `HTTPS_PROXY` automatically. In
