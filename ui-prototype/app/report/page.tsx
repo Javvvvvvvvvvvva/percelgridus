@@ -1,0 +1,305 @@
+import Link from "next/link";
+import { Header } from "@/components/header";
+import { Badge, LegendSwatch } from "@/components/badge";
+import { FactCard } from "@/components/fact-card";
+import { subjectParcel, openItems, TOTAL_OPEN_ITEMS } from "@/lib/mock-data";
+
+export default async function ReportPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ scenario?: string }>;
+}) {
+  const { scenario } = await searchParams;
+  const isRedev = scenario !== "current";
+
+  return (
+    <div className="pg-page">
+      <div className="pg-shell">
+        <div className="pg-card">
+          <Header variant="app" searchValue={subjectParcel.address} />
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 16,
+              padding: "16px 24px",
+              background: "var(--orange-bg)",
+              borderBottom: "1px solid var(--line)",
+            }}
+          >
+            <div
+              style={{
+                display: "grid",
+                placeItems: "center",
+                width: 28,
+                height: 28,
+                borderRadius: 6,
+                background: "var(--orange)",
+                color: "var(--panel)",
+                fontFamily: "var(--font-sans), sans-serif",
+                fontWeight: 700,
+                fontSize: 15,
+                lineHeight: 1,
+              }}
+            >
+              !
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+              <div style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 600, fontSize: 17, lineHeight: 1.2, color: "var(--orange)", letterSpacing: "-.01em" }}>
+                PRELIMINARY — {TOTAL_OPEN_ITEMS} open items block approval
+              </div>
+              <div style={{ fontFamily: "var(--font-sans), sans-serif", fontSize: 12, lineHeight: 1.4, color: "var(--ink2)" }}>
+                Nothing below is a legal maximum. Missing inputs are shown, never inferred.
+              </div>
+            </div>
+            <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+              <div style={{ padding: "7px 12px", border: "1px solid var(--line2)", borderRadius: 6, background: "var(--panel)", fontFamily: "var(--font-mono), monospace", fontWeight: 500, fontSize: 11, lineHeight: 1, color: "var(--ink2)", letterSpacing: ".05em" }}>
+                SNAPSHOT 2026-08-27
+              </div>
+              <div style={{ padding: "7px 12px", borderRadius: 6, background: "var(--orange)", color: "var(--panel)", fontFamily: "var(--font-mono), monospace", fontWeight: 600, fontSize: 11, lineHeight: 1, letterSpacing: ".05em" }}>
+                {TOTAL_OPEN_ITEMS} BLOCKERS
+              </div>
+            </div>
+          </div>
+
+          <div className="pg-grid-aside400">
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 600, fontSize: 12, lineHeight: 1, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink3)" }}>
+                  Grounded facts
+                </div>
+                <div style={{ display: "flex", gap: 12, fontFamily: "var(--font-mono), monospace", fontWeight: 500, fontSize: 10, lineHeight: 1, letterSpacing: ".06em", color: "var(--ink3)", flexWrap: "wrap" }}>
+                  <LegendSwatch tone="blue" label="OFFICIAL" />
+                  <LegendSwatch tone="orange" label="UNVERIFIED" />
+                  <LegendSwatch tone="gray" label="ALGORITHM" />
+                  <LegendSwatch tone="purple" label="USER ASSUMPTION" />
+                </div>
+              </div>
+
+              <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 8, padding: "16px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 500, fontSize: 10, lineHeight: 1, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink3)" }}>
+                  Subject parcel
+                </div>
+                <div style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 600, fontSize: 22, lineHeight: 1.2, letterSpacing: "-.02em" }}>
+                  {subjectParcel.address}
+                </div>
+                <div style={{ display: "flex", gap: 20, fontFamily: "var(--font-mono), monospace", fontSize: 12, lineHeight: 1, color: "var(--ink2)", flexWrap: "wrap" }}>
+                  <span>APN {subjectParcel.apn}</span>
+                  <span>Owner: [on record]</span>
+                  <span>{subjectParcel.ward}</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Badge tone="blue">OFFICIAL · VERIFIED</Badge>
+                  <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.4, color: "var(--ink3)" }}>
+                    Hennepin County Assessor parcel record
+                  </span>
+                </div>
+              </div>
+
+              <div className="pg-2col">
+                <FactCard
+                  label="Lot area"
+                  value={<>{subjectParcel.lotAreaSf.toLocaleString("en-US")} <span style={{ fontSize: 14, color: "var(--ink2)" }}>sq ft</span></>}
+                  badges={[{ tone: "blue", label: "OFFICIAL · VERIFIED" }]}
+                  source="Hennepin County GIS parcel polygon"
+                />
+                <FactCard
+                  label="Flood exposure"
+                  value="Zone X"
+                  sub="Not a Special Flood Hazard Area"
+                  badges={[{ tone: "blue", label: "OFFICIAL · VERIFIED" }]}
+                  source="FEMA NFHL, panel 27053C0362F"
+                />
+                <FactCard
+                  label="Topography"
+                  value={<>877–880 <span style={{ fontSize: 14, color: "var(--ink2)" }}>ft</span></>}
+                  sub="Mean slope 2.1% — buildable without terracing"
+                  badges={[
+                    { tone: "blue", label: "OFFICIAL" },
+                    { tone: "gray", label: "ALGORITHM · SLOPE" },
+                  ]}
+                  source="USGS 3DEP 1-m DEM, sampled on parcel"
+                />
+                <FactCard
+                  label="Zoning district"
+                  value={subjectParcel.zoningDistrict}
+                  sub={`${subjectParcel.zoningName} · Built form: ${subjectParcel.builtForm}`}
+                  badges={[{ tone: "blue", label: "OFFICIAL · VERIFIED" }]}
+                  source="City of Minneapolis zoning + built-form GIS"
+                />
+                <div
+                  style={{
+                    background: "var(--panel)",
+                    border: "1px solid var(--line)",
+                    borderRadius: 8,
+                    padding: "14px 16px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 8,
+                  }}
+                >
+                  <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 500, fontSize: 10, lineHeight: 1, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink3)" }}>
+                    Permitted uses
+                  </div>
+                  <div style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 500, fontSize: 17, lineHeight: 1.3, letterSpacing: "-.01em" }}>
+                    Single-, two-, three-family dwelling
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+                    <Badge tone="blue">OFFICIAL</Badge>
+                    <Badge tone="orange">UNVERIFIED</Badge>
+                  </div>
+                  <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.4, color: "var(--ink3)" }}>
+                    City of Minneapolis §545.100 — machine-parsed
+                  </div>
+                </div>
+                <FactCard
+                  label="Maximum height"
+                  value={<>{subjectParcel.maxHeightFt} <span style={{ fontSize: 14, color: "var(--ink2)" }}>ft</span></>}
+                  badges={[
+                    { tone: "blue", label: "OFFICIAL" },
+                    { tone: "orange", label: "UNVERIFIED" },
+                  ]}
+                  source="City of Minneapolis §540.410 — machine-parsed"
+                />
+                <FactCard
+                  label="Maximum FAR"
+                  value={subjectParcel.maxFar}
+                  sub="Three-family dwelling tier"
+                  badges={[
+                    { tone: "blue", label: "OFFICIAL" },
+                    { tone: "orange", label: "UNVERIFIED" },
+                  ]}
+                  source="City of Minneapolis §540.110 — machine-parsed"
+                />
+                <FactCard
+                  label="Maximum lot coverage"
+                  value={<>{subjectParcel.maxLotCoveragePct}<span style={{ fontSize: 14, color: "var(--ink2)" }}>%</span></>}
+                  badges={[
+                    { tone: "blue", label: "OFFICIAL" },
+                    { tone: "orange", label: "UNVERIFIED" },
+                  ]}
+                  source="City of Minneapolis §540.910 — machine-parsed"
+                />
+
+                <div
+                  style={{
+                    gridColumn: "span 2",
+                    background: "var(--orange-bg)",
+                    border: "1px solid var(--orange)",
+                    borderRadius: 8,
+                    padding: "14px 16px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 16,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1, minWidth: 220 }}>
+                    <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 500, fontSize: 10, lineHeight: 1, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--orange)" }}>
+                      Minimum setbacks
+                    </div>
+                    <div style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 600, fontSize: 20, lineHeight: 1.1, color: "var(--orange)", letterSpacing: "-.01em" }}>
+                      Unresolved
+                    </div>
+                    <div style={{ fontFamily: "var(--font-sans), sans-serif", fontSize: 12, lineHeight: 1.4, color: "var(--ink2)" }}>
+                      Contextual front-yard rule depends on adjacent buildings — not automatable from published data.
+                    </div>
+                  </div>
+                  <div style={{ display: "inline-flex", padding: "6px 12px", borderRadius: 5, background: "var(--orange)", color: "var(--panel)", fontFamily: "var(--font-mono), monospace", fontWeight: 600, fontSize: 11, lineHeight: 1, letterSpacing: ".06em", whiteSpace: "nowrap" }}>
+                    BLOCKS APPROVAL
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 600, fontSize: 12, lineHeight: 1, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink3)" }}>
+                  Open items
+                </div>
+                <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 600, fontSize: 11, lineHeight: 1, color: "var(--orange)", letterSpacing: ".06em" }}>
+                  BLOCKS APPROVAL
+                </div>
+              </div>
+
+              <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden" }}>
+                {openItems.map((item, i) => (
+                  <div
+                    key={item.title}
+                    style={{
+                      display: "flex",
+                      gap: 12,
+                      padding: "14px 16px",
+                      borderBottom: i < openItems.length - 1 ? "1px solid var(--line)" : undefined,
+                    }}
+                  >
+                    <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 600, fontSize: 12, lineHeight: 1.4, color: "var(--orange)", minWidth: 16 }}>
+                      {String(i + 1).padStart(2, "0")}
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <div style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 500, fontSize: 13, lineHeight: 1.35 }}>{item.title}</div>
+                      <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.5, color: "var(--ink3)" }}>{item.detail}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ background: "var(--panel2)", border: "1px solid var(--line)", borderRadius: 8, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 500, fontSize: 10, lineHeight: 1, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink3)" }}>
+                  Reviewer
+                </div>
+                <div style={{ fontFamily: "var(--font-sans), sans-serif", fontSize: 12, lineHeight: 1.5, color: "var(--ink2)" }}>
+                  No licensed reviewer has signed off on this parcel. Assign one to convert machine-parsed values to verified.
+                </div>
+                <button
+                  style={{
+                    cursor: "pointer",
+                    alignSelf: "flex-start",
+                    border: "1px solid var(--line2)",
+                    background: "var(--panel)",
+                    color: "var(--ink)",
+                    borderRadius: 6,
+                    padding: "9px 14px",
+                    fontFamily: "var(--font-sans), sans-serif",
+                    fontSize: 12,
+                    lineHeight: 1,
+                  }}
+                >
+                  Request review
+                </button>
+              </div>
+
+              {isRedev && (
+                <Link
+                  href="/envelope"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    background: "var(--blue-bg)",
+                    border: "1px solid var(--blue)",
+                    borderRadius: 8,
+                    padding: "14px 16px",
+                    color: "var(--blue)",
+                    textDecoration: "none",
+                    fontFamily: "var(--font-sans), sans-serif",
+                    fontWeight: 600,
+                    fontSize: 13,
+                  }}
+                >
+                  Redevelopment scenario — view maximum build envelope
+                  <span aria-hidden>→</span>
+                </Link>
+              )}
+            </div>
+          </div>
+
+          <div style={{ padding: "16px 24px", borderTop: "1px solid var(--line)", background: "var(--panel2)", fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.6, color: "var(--ink3)" }}>
+            PRELIMINARY REFERENCE ONLY — Values are derived from public sources at the snapshot time and machine-parsed ordinance text. They are not legal maximums, not a zoning determination, and not a substitute for review by a licensed professional or the City of Minneapolis.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

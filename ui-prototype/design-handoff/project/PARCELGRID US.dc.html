@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#e9ebef; }
+  a { color:#1d4ed8; text-decoration:none; }
+  a:hover { color:#123a9e; text-decoration:underline; }
+  [data-pg] {
+    --canvas:#e9ebef; --bg:#f4f5f7; --panel:#ffffff; --panel2:#f8f9fb;
+    --ink:#0e1420; --ink2:#4a5568; --ink3:#7b8798; --line:#e2e6ec; --line2:#cfd6e0;
+    --blue:#1d4ed8; --blue-bg:#e7eefc; --orange:#b45309; --orange-bg:#fcf0df;
+    --gray:#50596a; --gray-bg:#eceef2; --purple:#6d28d9; --purple-bg:#f0e9fd;
+    --red:#b3261e; --red-bg:#fbeae8; --green:#15803d; --green-bg:#e6f4ea;
+    --map:#dfe4ec; --map-hi:#1d4ed8; --shadow:0 1px 2px rgba(14,20,32,.06),0 8px 24px rgba(14,20,32,.05);
+  }
+  [data-pg="dark"] {
+    --canvas:#05080d; --bg:#0b0f16; --panel:#121821; --panel2:#0f151d;
+    --ink:#e9eef6; --ink2:#9dabc0; --ink3:#69788e; --line:#222c3b; --line2:#2e3a4c;
+    --blue:#7ba4ff; --blue-bg:#152444; --orange:#f0a45c; --orange-bg:#3a2710;
+    --gray:#9aa6b8; --gray-bg:#1c242f; --purple:#b696f7; --purple-bg:#291a49;
+    --red:#ff8a80; --red-bg:#3d1a17; --green:#63c98a; --green-bg:#12301f;
+    --map:#1a2333; --map-hi:#7ba4ff;
+    --shadow:0 1px 2px rgba(0,0,0,.5),0 10px 30px rgba(0,0,0,.4);
+  }
+  @keyframes pgpulse { 0%,100% { opacity:.35 } 50% { opacity:.9 } }
+</style>
+</helmet>
+
+<div data-pg="{{ theme }}" style="background:var(--canvas);min-height:100vh;padding:56px 48px 96px;display:flex;flex-direction:column;gap:56px;font-family:'IBM Plex Sans',system-ui,sans-serif;color:var(--ink)">
+
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;width:1440px;margin:0 auto">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3)">UI concept · 5 artboards</div>
+      <div style="font:600 30px/1.1 'IBM Plex Sans',sans-serif;letter-spacing:-.02em">PARCELGRID US — preliminary feasibility</div>
+    </div>
+    <button onClick="{{ toggleTheme }}" style="cursor:pointer;border:1px solid var(--line2);background:var(--panel);color:var(--ink2);border-radius:6px;padding:9px 14px;font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase" style-hover="border-color:var(--ink3);color:var(--ink)">Light / Dark</button>
+  </div>
+
+  <!-- ══════════ ARTBOARD 1 ══════════ -->
+  <div data-screen-label="01 Landing" style="width:1440px;margin:0 auto;display:flex;flex-direction:column;gap:12px">
+    <div style="font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)">화면 1 — Landing / U.S. map entry</div>
+    <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)">
+
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--line);background:var(--panel)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:22px;height:22px;border-radius:4px;background:var(--blue);display:grid;place-items:center;color:#fff;font:700 11px/1 'IBM Plex Mono',monospace">PG</div>
+          <div style="font:600 14px/1 'IBM Plex Sans',sans-serif;letter-spacing:-.01em">PARCELGRID <span style="color:var(--ink3);font-weight:500">US</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="font:500 11px/1 'IBM Plex Mono',monospace;color:var(--ink3);letter-spacing:.06em">PILOT · MINNEAPOLIS, MN</div>
+          <button onClick="{{ toggleTheme }}" style="cursor:pointer;width:30px;height:30px;border:1px solid var(--line2);background:var(--panel2);color:var(--ink2);border-radius:6px;font:500 12px/1 'IBM Plex Mono',monospace">◐</button>
+        </div>
+      </div>
+
+      <div style="padding:64px 24px 40px;display:flex;flex-direction:column;align-items:center;gap:14px">
+        <h1 style="margin:0;font:600 52px/1.06 'IBM Plex Sans',sans-serif;letter-spacing:-.035em;text-align:center;max-width:900px;text-wrap:balance">Any U.S. parcel.<br>Sourced feasibility in seconds.</h1>
+        <p style="margin:0;max-width:620px;text-align:center;font:400 16px/1.55 'IBM Plex Sans',sans-serif;color:var(--ink2);text-wrap:pretty">Every number shows its source, confidence, and reviewer. Preliminary reference only — not a legal maximum.</p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;padding:8px 24px 24px">
+
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">(a) Default map</div>
+          <div style="position:relative;background:var(--panel);border:1px solid var(--line);border-radius:8px;height:300px;overflow:hidden">
+            <svg viewBox="0 0 1200 750" style="width:100%;height:100%;display:block">
+              <sc-for list="{{ statesPlain }}" as="p" hint-placeholder-count="24">
+                <path d="{{ p.d }}" fill="var(--map)" stroke="var(--panel)" stroke-width="1.6"></path>
+              </sc-for>
+            </svg>
+            <div style="position:absolute;left:12px;bottom:10px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.08em;color:var(--ink3)">SELECT A STATE</div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">(b) Hover — Minnesota</div>
+          <div style="position:relative;background:var(--panel);border:1px solid var(--blue);border-radius:8px;height:300px;overflow:hidden">
+            <svg viewBox="0 0 1200 750" style="width:100%;height:100%;display:block">
+              <g transform="{{ mnZoom }}">
+                <sc-for list="{{ statesMN }}" as="p" hint-placeholder-count="24">
+                  <path d="{{ p.d }}" fill="{{ p.fill }}" stroke="var(--panel)" stroke-width="1.4"></path>
+                </sc-for>
+              </g>
+            </svg>
+            <div style="position:absolute;left:50%;top:46%;transform:translate(-50%,-118%);background:var(--ink);color:var(--panel);border-radius:6px;padding:8px 11px;display:flex;flex-direction:column;gap:3px;box-shadow:var(--shadow)">
+              <div style="font:600 12px/1.1 'IBM Plex Sans',sans-serif">Minnesota</div>
+              <div style="font:500 10px/1.1 'IBM Plex Mono',monospace;opacity:.72;letter-spacing:.05em">1 COUNTY LIVE · HENNEPIN</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">(c) Selected — address search</div>
+          <div style="position:relative;background:var(--panel);border:1px solid var(--line);border-radius:8px;height:300px;overflow:hidden">
+            <svg viewBox="0 0 1200 750" style="width:100%;height:100%;display:block">
+              <g transform="{{ mnZoom }}">
+                <sc-for list="{{ statesMN }}" as="p" hint-placeholder-count="24">
+                  <path d="{{ p.d }}" fill="{{ p.fill }}" stroke="var(--panel)" stroke-width="1.4"></path>
+                </sc-for>
+              </g>
+            </svg>
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;gap:10px;padding:0 18px 18px;background:linear-gradient(to bottom,transparent 22%,var(--panel) 78%)">
+              <div style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--blue)">Minnesota selected</div>
+              <div style="display:flex;align-items:center;gap:10px;background:var(--panel2);border:1px solid var(--line2);border-radius:8px;padding:12px 14px">
+                <span style="color:var(--ink3);font:500 13px/1 'IBM Plex Mono',monospace">⌕</span>
+                <span style="font:400 13px/1 'IBM Plex Sans',sans-serif;color:var(--ink3)">Search a Minneapolis address…</span>
+              </div>
+              <div style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:var(--ink3)">Outside Hennepin County, results are unsupported.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:center;padding:0 24px 40px">
+        <div style="display:inline-flex;align-items:center;gap:8px;background:var(--blue-bg);color:var(--blue);border-radius:999px;padding:8px 16px;font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.05em">
+          <span style="width:6px;height:6px;border-radius:99px;background:currentColor;animation:pgpulse 2.4s ease-in-out infinite"></span>
+          CURRENTLY SUPPORTED · MINNEAPOLIS, HENNEPIN COUNTY, MN
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ ARTBOARD 2 ══════════ -->
+  <div data-screen-label="02 Search" style="width:1440px;margin:0 auto;display:flex;flex-direction:column;gap:12px">
+    <div style="font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)">화면 2 — Address + expected acquisition price</div>
+    <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)">
+
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 24px;border-bottom:1px solid var(--line);background:var(--panel)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:22px;height:22px;border-radius:4px;background:var(--blue);display:grid;place-items:center;color:#fff;font:700 11px/1 'IBM Plex Mono',monospace">PG</div>
+          <div style="font:600 14px/1 'IBM Plex Sans',sans-serif">PARCELGRID <span style="color:var(--ink3);font-weight:500">US</span></div>
+          <div style="margin-left:10px;padding:5px 10px;border:1px solid var(--line2);border-radius:6px;font:400 12px/1 'IBM Plex Mono',monospace;color:var(--ink3);min-width:260px">⌕ Search parcel…</div>
+        </div>
+        <button onClick="{{ toggleTheme }}" style="cursor:pointer;width:30px;height:30px;border:1px solid var(--line2);background:var(--panel2);color:var(--ink2);border-radius:6px;font:500 12px/1 'IBM Plex Mono',monospace">◐</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 340px;gap:28px;padding:44px 32px 48px">
+        <div style="display:flex;flex-direction:column;gap:24px">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3)">Parcel address</div>
+            <div style="display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--blue);border-radius:8px;padding:16px 18px;box-shadow:0 0 0 3px var(--blue-bg)">
+              <span style="color:var(--blue);font:500 15px/1 'IBM Plex Mono',monospace">⌕</span>
+              <span style="font:500 19px/1 'IBM Plex Sans',sans-serif;color:var(--ink)">2320 Colfax Ave S, Minneapolis, MN 55405</span>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;font:400 11px/1.4 'IBM Plex Mono',monospace;color:var(--ink3)">
+              <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 7px;border-radius:4px;background:var(--blue-bg);color:var(--blue);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">OFFICIAL</span>
+              Matched to APN 3302924110099 · Hennepin County parcel layer
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3)">Expected acquisition price</div>
+              <div style="display:flex;align-items:baseline;gap:2px;background:var(--panel);border:1px solid var(--line2);border-radius:8px;padding:14px 18px">
+                <span style="font:500 22px/1 'IBM Plex Sans',sans-serif;color:var(--ink3)">$</span>
+                <span style="font:600 28px/1 'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.02em">{{ acqPlain }}</span>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 7px;border-radius:4px;background:var(--purple-bg);color:var(--purple);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">USER ASSUMPTION</span>
+                <span style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:var(--ink3)">Not verified against any listing or sale record.</span>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3)">Scenario</div>
+              <div style="display:flex;background:var(--panel);border:1px solid var(--line2);border-radius:8px;padding:4px;gap:4px">
+                <button onClick="{{ setScenarioCurrent }}" style="{{ tabCurrent }}">Current condition</button>
+                <button onClick="{{ setScenarioRedev }}" style="{{ tabRedev }}">Redevelopment</button>
+              </div>
+              <div style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:var(--ink3)">Redevelopment adds the by-right building envelope and pro forma.</div>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:16px">
+            <button style="cursor:pointer;border:none;background:var(--blue);color:#fff;border-radius:8px;padding:16px 40px;font:600 15px/1 'IBM Plex Sans',sans-serif;letter-spacing:.01em" style-hover="filter:brightness(1.08)">Analyze parcel</button>
+            <div style="font:400 12px/1.5 'IBM Plex Sans',sans-serif;color:var(--ink3);max-width:340px;text-wrap:pretty">Typical run: 4–9 s. Results are preliminary reference values requiring professional confirmation.</div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3)">Recent lookups</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:5px" style-hover="border-color:var(--line2)">
+              <div style="font:500 13px/1.3 'IBM Plex Sans',sans-serif">2320 Colfax Ave S</div>
+              <div style="display:flex;justify-content:space-between;font:400 11px/1 'IBM Plex Mono',monospace;color:var(--ink3)"><span>UN2 · 8,825 sf</span><span>8 open items</span></div>
+            </div>
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:5px">
+              <div style="font:500 13px/1.3 'IBM Plex Sans',sans-serif">1416 W 28th St</div>
+              <div style="display:flex;justify-content:space-between;font:400 11px/1 'IBM Plex Mono',monospace;color:var(--ink3)"><span>UN1 · 5,140 sf</span><span>6 open items</span></div>
+            </div>
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:5px">
+              <div style="font:500 13px/1.3 'IBM Plex Sans',sans-serif">3100 Lyndale Ave S</div>
+              <div style="display:flex;justify-content:space-between;font:400 11px/1 'IBM Plex Mono',monospace;color:var(--ink3)"><span>CM1 · 12,300 sf</span><span>9 open items</span></div>
+            </div>
+          </div>
+          <div style="margin-top:6px;padding:12px 14px;border:1px dashed var(--line2);border-radius:8px;font:400 11px/1.5 'IBM Plex Mono',monospace;color:var(--ink3)">Saved lookups keep the source snapshot taken at run time, so numbers stay auditable.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ ARTBOARD 3 ══════════ -->
+  <div data-screen-label="03 Current condition" style="width:1440px;margin:0 auto;display:flex;flex-direction:column;gap:12px">
+    <div style="font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)">화면 3 — Current condition report</div>
+    <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)">
+
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 24px;border-bottom:1px solid var(--line);background:var(--panel)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:22px;height:22px;border-radius:4px;background:var(--blue);display:grid;place-items:center;color:#fff;font:700 11px/1 'IBM Plex Mono',monospace">PG</div>
+          <div style="font:600 14px/1 'IBM Plex Sans',sans-serif">PARCELGRID <span style="color:var(--ink3);font-weight:500">US</span></div>
+          <div style="margin-left:10px;padding:5px 10px;border:1px solid var(--line2);border-radius:6px;font:400 12px/1 'IBM Plex Mono',monospace;color:var(--ink2);min-width:340px;white-space:nowrap">⌕ 2320 Colfax Ave S, Minneapolis, MN 55405</div>
+        </div>
+        <button onClick="{{ toggleTheme }}" style="cursor:pointer;width:30px;height:30px;border:1px solid var(--line2);background:var(--panel2);color:var(--ink2);border-radius:6px;font:500 12px/1 'IBM Plex Mono',monospace">◐</button>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:16px;padding:16px 24px;background:var(--orange-bg);border-bottom:1px solid var(--line)">
+        <div style="display:grid;place-items:center;width:28px;height:28px;border-radius:6px;background:var(--orange);color:var(--panel);font:700 15px/1 'IBM Plex Sans',sans-serif">!</div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <div style="font:600 17px/1.2 'IBM Plex Sans',sans-serif;color:var(--orange);letter-spacing:-.01em">PRELIMINARY — 8 open items block approval</div>
+          <div style="font:400 12px/1.4 'IBM Plex Sans',sans-serif;color:var(--ink2)">Nothing below is a legal maximum. Missing inputs are shown, never inferred.</div>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <div style="padding:7px 12px;border:1px solid var(--line2);border-radius:6px;background:var(--panel);font:500 11px/1 'IBM Plex Mono',monospace;color:var(--ink2);letter-spacing:.05em">SNAPSHOT 2026-08-27</div>
+          <div style="padding:7px 12px;border-radius:6px;background:var(--orange);color:var(--panel);font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.05em">8 BLOCKERS</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 400px;gap:24px;padding:24px">
+
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Grounded facts</div>
+            <div style="display:flex;gap:12px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em;color:var(--ink3)">
+              <span style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:2px;background:var(--blue)"></span>OFFICIAL</span>
+              <span style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:2px;background:var(--orange)"></span>UNVERIFIED</span>
+              <span style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:2px;background:var(--gray)"></span>ALGORITHM</span>
+              <span style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:2px;background:var(--purple)"></span>USER ASSUMPTION</span>
+            </div>
+          </div>
+
+          <div style="grid-column:span 2;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+            <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Subject parcel</div>
+            <div style="font:600 22px/1.2 'IBM Plex Sans',sans-serif;letter-spacing:-.02em">2320 Colfax Ave S, Minneapolis, MN 55405</div>
+            <div style="display:flex;gap:20px;font:400 12px/1 'IBM Plex Mono',monospace;color:var(--ink2)">
+              <span>APN 3302924110099</span><span>Owner: [on record]</span><span>Ward 10</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:4px;background:var(--blue-bg);color:var(--blue);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">OFFICIAL · VERIFIED</span>
+              <span style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:var(--ink3)">Hennepin County Assessor parcel record</span>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+              <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Lot area</div>
+              <div style="font:500 24px/1.1 'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.02em">8,825 <span style="font-size:14px;color:var(--ink2)">sq ft</span></div>
+              <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+                <span style="display:inline-flex;padding:3px 8px;border-radius:4px;background:var(--blue-bg);color:var(--blue);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">OFFICIAL · VERIFIED</span>
+              </div>
+              <div style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:var(--ink3)">Hennepin County GIS parcel polygon</div>
+            </div>
+
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+              <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Flood exposure</div>
+              <div style="font:500 24px/1.1 'IBM Plex Sans',sans-serif;letter-spacing:-.02em">Zone X</div>
+              <div style="font:400 12px/1.4 'IBM Plex Sans',sans-serif;color:var(--ink2)">Not a Special Flood Hazard Area</div>
+              <div style="display:flex;align-items:center;gap:7px">
+                <span style="display:inline-flex;padding:3px 8px;border-radius:4px;background:var(--blue-bg);color:var(--blue);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">OFFICIAL · VERIFIED</span>
+              </div>
+              <div style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:var(--ink3)">FEMA NFHL, panel 27053C0362F</div>
+            </div>
+
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+              <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Topography</div>
+              <div style="font:500 24px/1.1 'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.02em">877–880 <span style="font-size:14px;color:var(--ink2)">ft</span></div>
+              <div style="font:400 12px/1.4 'IBM Plex Sans',sans-serif;color:var(--ink2)">Mean slope 2.1% — buildable without terracing</div>
+              <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+                <span style="display:inline-flex;padding:3px 8px;border-radius:4px;background:var(--blue-bg);color:var(--blue);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">OFFICIAL</span>
+                <span style="display:inline-flex;padding:3px 8px;border-radius:4px;background:var(--gray-bg);color:var(--gray);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">ALGORITHM · SLOPE</span>
+              </div>
+              <div style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:var(--ink3)">USGS 3DEP 1-m DEM, sampled on parcel</div>
+            </div>
+
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+              <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Zoning district</div>
+              <div style="font:500 24px/1.1 'IBM Plex Sans',sans-serif;letter-spacing:-.02em">UN2</div>
+              <div style="font:400 12px/1.4 'IBM Plex Sans',sans-serif;color:var(--ink2)">Urban Neighborhood 2 · Built form: Interior 3</div>
+              <div style="display:flex;align-items:center;gap:7px">
+                <span style="display:inline-flex;padding:3px 8px;border-radius:4px;background:var(--blue-bg);color:var(--blue);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">OFFICIAL · VERIFIED</span>
+              </div>
+              <div style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:var(--ink3)">City of Minneapolis zoning + built-form GIS</div>
+            </div>
+
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+              <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Permitted uses</div>
+              <div style="font:500 17px/1.3 'IBM Plex Sans',sans-serif;letter-spacing:-.01em">Single-, two-, three-family dwelling</div>
+              <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+                <span style="display:inline-flex;padding:3px 8px;border-radius:4px;background:var(--blue-bg);color:var(--blue);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">OFFICIAL</span>
+                <span style="display:inline-flex;padding:3px 8px;border-radius:4px;background:var(--orange-bg);color:var(--orange);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">UNVERIFIED</span>
+              </div>
+              <div style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:var(--ink3)">City of Minneapolis §545.100 — machine-parsed</div>
+            </div>
+
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+              <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Maximum height</div>
+              <div style="font:500 24px/1.1 'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.02em">42 <span style="font-size:14px;color:var(--ink2)">ft</span></div>
+              <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+                <span style="display:inline-flex;padding:3px 8px;border-radius:4px;background:var(--blue-bg);color:var(--blue);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">OFFICIAL</span>
+                <span style="display:inline-flex;padding:3px 8px;border-radius:4px;background:var(--orange-bg);color:var(--orange);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">UNVERIFIED</span>
+              </div>
+              <div style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:var(--ink3)">City of Minneapolis §540.410 — machine-parsed</div>
+            </div>
+
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+              <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Maximum FAR</div>
+              <div style="font:500 24px/1.1 'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.02em">0.7</div>
+              <div style="font:400 12px/1.4 'IBM Plex Sans',sans-serif;color:var(--ink2)">Three-family dwelling tier</div>
+              <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+                <span style="display:inline-flex;padding:3px 8px;border-radius:4px;background:var(--blue-bg);color:var(--blue);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">OFFICIAL</span>
+                <span style="display:inline-flex;padding:3px 8px;border-radius:4px;background:var(--orange-bg);color:var(--orange);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">UNVERIFIED</span>
+              </div>
+              <div style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:var(--ink3)">City of Minneapolis §540.110 — machine-parsed</div>
+            </div>
+
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+              <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Maximum lot coverage</div>
+              <div style="font:500 24px/1.1 'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.02em">60<span style="font-size:14px;color:var(--ink2)">%</span></div>
+              <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+                <span style="display:inline-flex;padding:3px 8px;border-radius:4px;background:var(--blue-bg);color:var(--blue);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">OFFICIAL</span>
+                <span style="display:inline-flex;padding:3px 8px;border-radius:4px;background:var(--orange-bg);color:var(--orange);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">UNVERIFIED</span>
+              </div>
+              <div style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:var(--ink3)">City of Minneapolis §540.910 — machine-parsed</div>
+            </div>
+
+            <div style="grid-column:span 2;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;padding:14px 16px;display:flex;align-items:center;gap:16px">
+              <div style="display:flex;flex-direction:column;gap:6px;flex:1">
+                <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--orange)">Minimum setbacks</div>
+                <div style="font:600 20px/1.1 'IBM Plex Sans',sans-serif;color:var(--orange);letter-spacing:-.01em">Unresolved</div>
+                <div style="font:400 12px/1.4 'IBM Plex Sans',sans-serif;color:var(--ink2)">Contextual front-yard rule depends on adjacent buildings — not automatable from published data.</div>
+              </div>
+              <div style="display:inline-flex;padding:6px 12px;border-radius:5px;background:var(--orange);color:var(--panel);font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.06em;white-space:nowrap">BLOCKS APPROVAL</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Open items</div>
+            <div style="font:600 11px/1 'IBM Plex Mono',monospace;color:var(--orange);letter-spacing:.06em">BLOCKS APPROVAL</div>
+          </div>
+
+          <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden">
+            <div style="display:flex;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)">
+              <div style="font:600 12px/1.4 'IBM Plex Mono',monospace;color:var(--orange);min-width:16px">01</div>
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <div style="font:500 13px/1.35 'IBM Plex Sans',sans-serif">Minimum setbacks unresolved</div>
+                <div style="font:400 11px/1.5 'IBM Plex Mono',monospace;color:var(--ink3)">Owner: local zoning professional · contextual, not automatable</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)">
+              <div style="font:600 12px/1.4 'IBM Plex Mono',monospace;color:var(--orange);min-width:16px">02</div>
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <div style="font:500 13px/1.35 'IBM Plex Sans',sans-serif">Minimum parking not evaluated</div>
+                <div style="font:400 11px/1.5 'IBM Plex Mono',monospace;color:var(--ink3)">Ch. 541 · transit-proximity exemptions unread</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)">
+              <div style="font:600 12px/1.4 'IBM Plex Mono',monospace;color:var(--orange);min-width:16px">03</div>
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <div style="font:500 13px/1.35 'IBM Plex Sans',sans-serif">Overlay districts unchecked</div>
+                <div style="font:400 11px/1.5 'IBM Plex Mono',monospace;color:var(--ink3)">Ch. 535 · incl. historic and pedestrian overlays</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)">
+              <div style="font:600 12px/1.4 'IBM Plex Mono',monospace;color:var(--orange);min-width:16px">04</div>
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <div style="font:500 13px/1.35 'IBM Plex Sans',sans-serif">Discretionary approvals unknown</div>
+                <div style="font:400 11px/1.5 'IBM Plex Mono',monospace;color:var(--ink3)">Site plan review / variance path not determined</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;padding:14px 16px">
+              <div style="font:600 12px/1.4 'IBM Plex Mono',monospace;color:var(--orange);min-width:16px">05</div>
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <div style="font:500 13px/1.35 'IBM Plex Sans',sans-serif">By-right rules await expert verification</div>
+                <div style="font:400 11px/1.5 'IBM Plex Mono',monospace;color:var(--ink3)">Height · FAR · lot coverage · permitted uses (4 items)</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+            <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Reviewer</div>
+            <div style="font:400 12px/1.5 'IBM Plex Sans',sans-serif;color:var(--ink2)">No licensed reviewer has signed off on this parcel. Assign one to convert machine-parsed values to verified.</div>
+            <button style="cursor:pointer;align-self:flex-start;border:1px solid var(--line2);background:var(--panel);color:var(--ink);border-radius:6px;padding:9px 14px;font:500 12px/1 'IBM Plex Sans',sans-serif" style-hover="border-color:var(--ink3)">Request review</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:16px 24px;border-top:1px solid var(--line);background:var(--panel2);font:400 11px/1.6 'IBM Plex Mono',monospace;color:var(--ink3)">
+        PRELIMINARY REFERENCE ONLY — Values are derived from public sources at the snapshot time and machine-parsed ordinance text. They are not legal maximums, not a zoning determination, and not a substitute for review by a licensed professional or the City of Minneapolis.
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ ARTBOARD 4 ══════════ -->
+  <div data-screen-label="04 Envelope" style="width:1440px;margin:0 auto;display:flex;flex-direction:column;gap:12px">
+    <div style="font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)">화면 4 — Maximum build envelope (redevelopment)</div>
+    <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)">
+
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 24px;border-bottom:1px solid var(--line);background:var(--panel)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:22px;height:22px;border-radius:4px;background:var(--blue);display:grid;place-items:center;color:#fff;font:700 11px/1 'IBM Plex Mono',monospace">PG</div>
+          <div style="font:600 14px/1 'IBM Plex Sans',sans-serif">PARCELGRID <span style="color:var(--ink3);font-weight:500">US</span></div>
+          <div style="margin-left:10px;padding:5px 10px;border:1px solid var(--line2);border-radius:6px;font:400 12px/1 'IBM Plex Mono',monospace;color:var(--ink2);min-width:340px;white-space:nowrap">⌕ 2320 Colfax Ave S, Minneapolis, MN 55405</div>
+        </div>
+        <button onClick="{{ toggleTheme }}" style="cursor:pointer;width:30px;height:30px;border:1px solid var(--line2);background:var(--panel2);color:var(--ink2);border-radius:6px;font:500 12px/1 'IBM Plex Mono',monospace">◐</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 480px;gap:24px;padding:24px">
+
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:20px;display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;align-items:baseline;justify-content:space-between">
+            <div style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Site diagram — by-right envelope</div>
+            <div style="font:400 11px/1 'IBM Plex Mono',monospace;color:var(--ink3)">Schematic · not survey-accurate</div>
+          </div>
+
+          <div style="position:relative;background:var(--panel2);border-radius:6px;padding:28px;display:grid;place-items:center;min-height:340px">
+            <div style="position:relative;width:420px;height:270px;border:2px solid var(--ink2);border-radius:2px;background:var(--panel)">
+              <div style="position:absolute;top:-22px;left:0;font:500 11px/1 'IBM Plex Mono',monospace;color:var(--ink2)">LOT 8,825 SF</div>
+              <div style="position:absolute;inset:26px;border:1px dashed var(--orange);border-radius:2px"></div>
+              <div style="position:absolute;top:32px;left:32px;right:32px;bottom:32px;background:var(--blue-bg);border:1.5px solid var(--blue);border-radius:2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+                <div style="font:600 15px/1.2 'IBM Plex Sans',sans-serif;color:var(--blue);font-variant-numeric:tabular-nums">5,295 sf footprint</div>
+                <div style="font:500 11px/1 'IBM Plex Mono',monospace;color:var(--blue);opacity:.8">60% LOT COVERAGE</div>
+              </div>
+              <div style="position:absolute;left:0;right:0;bottom:-24px;display:flex;justify-content:center"><span style="font:500 11px/1 'IBM Plex Mono',monospace;color:var(--orange)">SETBACK LINE — UNVERIFIED</span></div>
+            </div>
+
+            <div style="position:absolute;right:28px;top:28px;bottom:28px;width:96px;display:flex;flex-direction:column;justify-content:flex-end;gap:6px">
+              <div style="display:flex;flex-direction:column-reverse;gap:3px">
+                <div style="height:52px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:2px;display:grid;place-items:center;font:500 10px/1 'IBM Plex Mono',monospace;color:var(--blue)">L1</div>
+                <div style="height:52px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:2px;display:grid;place-items:center;font:500 10px/1 'IBM Plex Mono',monospace;color:var(--blue)">L2</div>
+                <div style="height:52px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:2px;display:grid;place-items:center;font:500 10px/1 'IBM Plex Mono',monospace;color:var(--blue)">L3</div>
+              </div>
+              <div style="border-top:1px solid var(--line2);padding-top:6px;font:500 10px/1.3 'IBM Plex Mono',monospace;color:var(--ink2);text-align:center">42 FT CAP<br>≈ 3 STORIES</div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:18px;flex-wrap:wrap;font:400 11px/1 'IBM Plex Mono',monospace;color:var(--ink3)">
+            <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:0;border-top:2px solid var(--ink2)"></span>Parcel boundary — official</span>
+            <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:0;border-top:1px dashed var(--orange)"></span>Assumed setback — unverified</span>
+            <span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:10px;background:var(--blue-bg);border:1px solid var(--blue)"></span>Max footprint — algorithm</span>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="background:var(--gray-bg);border:1px solid var(--line);border-radius:8px;padding:14px 16px;font:400 12px/1.5 'IBM Plex Sans',sans-serif;color:var(--ink2)">
+            Vacant-or-redevelop reading: <strong style="color:var(--ink);font-weight:600">this is the most you could build by right</strong> if the parcel were cleared today, before setbacks and parking are resolved.
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:7px">
+              <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Buildable floor area</div>
+              <div style="font:600 26px/1.1 'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.02em">6,177 <span style="font-size:13px;font-weight:500;color:var(--ink2)">GSF</span></div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <span style="display:inline-flex;padding:3px 8px;border-radius:4px;background:var(--gray-bg);color:var(--gray);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">ALGORITHM</span>
+                <span style="display:inline-flex;padding:3px 8px;border-radius:4px;background:var(--orange-bg);color:var(--orange);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">UNVERIFIED</span>
+              </div>
+              <div style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:var(--ink3)">8,825 sf × FAR 0.7 · §540.110</div>
+            </div>
+
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:7px">
+              <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Max footprint</div>
+              <div style="font:600 26px/1.1 'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.02em">5,295 <span style="font-size:13px;font-weight:500;color:var(--ink2)">sf</span></div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <span style="display:inline-flex;padding:3px 8px;border-radius:4px;background:var(--gray-bg);color:var(--gray);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">ALGORITHM</span>
+                <span style="display:inline-flex;padding:3px 8px;border-radius:4px;background:var(--orange-bg);color:var(--orange);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">UNVERIFIED</span>
+              </div>
+              <div style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:var(--ink3)">60% lot coverage · §540.910</div>
+            </div>
+
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:7px">
+              <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Max height</div>
+              <div style="font:600 26px/1.1 'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.02em">42 <span style="font-size:13px;font-weight:500;color:var(--ink2)">ft</span></div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <span style="display:inline-flex;padding:3px 8px;border-radius:4px;background:var(--blue-bg);color:var(--blue);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">OFFICIAL</span>
+                <span style="display:inline-flex;padding:3px 8px;border-radius:4px;background:var(--orange-bg);color:var(--orange);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">UNVERIFIED</span>
+              </div>
+              <div style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:var(--ink3)">§540.410 — machine-parsed</div>
+            </div>
+
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:7px">
+              <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Indicative units</div>
+              <div style="font:600 26px/1.1 'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.02em">5 <span style="font-size:13px;font-weight:500;color:var(--ink2)">units</span></div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <span style="display:inline-flex;padding:3px 8px;border-radius:4px;background:var(--purple-bg);color:var(--purple);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">USER ASSUMPTION</span>
+              </div>
+              <div style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:var(--ink3)">@ 1,200 GSF/unit · conflicts with 3-family use cap</div>
+            </div>
+          </div>
+
+          <div style="background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start">
+            <div style="display:grid;place-items:center;width:20px;height:20px;border-radius:4px;background:var(--orange);color:var(--panel);font:700 12px/1 'IBM Plex Sans',sans-serif;flex-shrink:0">!</div>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <div style="font:600 13px/1.3 'IBM Plex Sans',sans-serif;color:var(--orange)">Envelope is provisional</div>
+              <div style="font:400 12px/1.5 'IBM Plex Sans',sans-serif;color:var(--ink2)">Setbacks unresolved and parking unevaluated — the real footprint can only shrink from here, never grow.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ ARTBOARD 5 ══════════ -->
+  <div data-screen-label="05 Pro forma" style="width:1440px;margin:0 auto;display:flex;flex-direction:column;gap:12px">
+    <div style="font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)">화면 5 — Pro forma / feasibility</div>
+    <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)">
+
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 24px;border-bottom:1px solid var(--line);background:var(--panel)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:22px;height:22px;border-radius:4px;background:var(--blue);display:grid;place-items:center;color:#fff;font:700 11px/1 'IBM Plex Mono',monospace">PG</div>
+          <div style="font:600 14px/1 'IBM Plex Sans',sans-serif">PARCELGRID <span style="color:var(--ink3);font-weight:500">US</span></div>
+          <div style="margin-left:10px;padding:5px 10px;border:1px solid var(--line2);border-radius:6px;font:400 12px/1 'IBM Plex Mono',monospace;color:var(--ink2);min-width:340px;white-space:nowrap">⌕ 2320 Colfax Ave S, Minneapolis, MN 55405</div>
+        </div>
+        <button onClick="{{ toggleTheme }}" style="cursor:pointer;width:30px;height:30px;border:1px solid var(--line2);background:var(--panel2);color:var(--ink2);border-radius:6px;font:500 12px/1 'IBM Plex Mono',monospace">◐</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--line);background:var(--panel)">
+        <div style="padding:18px 24px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:6px">
+          <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Expected acquisition price</div>
+          <div style="font:600 26px/1.1 'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.02em">{{ acqMoney }}</div>
+          <span style="align-self:flex-start;padding:3px 8px;border-radius:4px;background:var(--purple-bg);color:var(--purple);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">USER ASSUMPTION</span>
+        </div>
+        <div style="padding:18px 24px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:6px">
+          <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Total development cost</div>
+          <div style="font:600 26px/1.1 'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.02em">{{ devMoney }}</div>
+          <span style="align-self:flex-start;padding:3px 8px;border-radius:4px;background:var(--gray-bg);color:var(--gray);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">ALGORITHM · 32% SOFT</span>
+        </div>
+        <div style="padding:18px 24px;display:flex;flex-direction:column;gap:6px;background:var(--panel2)">
+          <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Total capital in</div>
+          <div style="font:600 26px/1.1 'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.02em">{{ totalMoney }}</div>
+          <span style="font:400 11px/1 'IBM Plex Mono',monospace;color:var(--ink3)">acquisition + development</span>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 400px;gap:24px;padding:24px">
+
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:7px">
+              <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Stabilized value</div>
+              <div style="font:600 28px/1.1 'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.025em">{{ valueMoney }}</div>
+              <div style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:var(--ink3)">NOI ÷ cap rate {{ capLabel }}</div>
+            </div>
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:7px">
+              <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Stabilized NOI</div>
+              <div style="font:600 28px/1.1 'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.025em">{{ noiMoney }}</div>
+              <div style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:var(--ink3)">5 units · 5% vacancy · $32,500 opex</div>
+            </div>
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:7px">
+              <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Yield on cost</div>
+              <div style="font:600 28px/1.1 'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.025em">{{ yocLabel }}</div>
+              <div style="font:400 11px/1.4 'IBM Plex Mono',monospace;color:var(--ink3)">NOI ÷ development cost</div>
+            </div>
+          </div>
+
+          <div style="border-radius:8px;padding:20px 22px;display:flex;align-items:center;gap:18px;{{ verdictStyle }}">
+            <div style="display:flex;flex-direction:column;gap:6px;flex:1">
+              <div style="font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;opacity:.85">{{ verdictKicker }}</div>
+              <div style="font:600 26px/1.15 'IBM Plex Sans',sans-serif;letter-spacing:-.025em;font-variant-numeric:tabular-nums">{{ verdictHeadline }}</div>
+              <div style="font:400 13px/1.5 'IBM Plex Sans',sans-serif;opacity:.9">{{ verdictSub }}</div>
+            </div>
+          </div>
+
+          <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden">
+            <div style="display:grid;grid-template-columns:1.6fr 1fr 1fr;padding:11px 16px;border-bottom:1px solid var(--line);background:var(--panel2);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">
+              <div>Line item</div><div style="text-align:right">Value</div><div style="text-align:right">Provenance</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1.6fr 1fr 1fr;padding:12px 16px;border-bottom:1px solid var(--line);align-items:center">
+              <div style="font:400 13px/1.3 'IBM Plex Sans',sans-serif">Rent per unit / month</div>
+              <div style="text-align:right;font:500 13px/1.3 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">{{ rentMoney }}</div>
+              <div style="text-align:right"><span style="display:inline-flex;padding:3px 8px;border-radius:4px;background:var(--purple-bg);color:var(--purple);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">USER ASSUMPTION</span></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1.6fr 1fr 1fr;padding:12px 16px;border-bottom:1px solid var(--line);align-items:center">
+              <div style="font:400 13px/1.3 'IBM Plex Sans',sans-serif">Hard cost per GSF</div>
+              <div style="text-align:right;font:500 13px/1.3 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">{{ psfMoney }}</div>
+              <div style="text-align:right"><span style="display:inline-flex;padding:3px 8px;border-radius:4px;background:var(--purple-bg);color:var(--purple);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">USER ASSUMPTION</span></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1.6fr 1fr 1fr;padding:12px 16px;border-bottom:1px solid var(--line);align-items:center">
+              <div style="font:400 13px/1.3 'IBM Plex Sans',sans-serif">Exit cap rate</div>
+              <div style="text-align:right;font:500 13px/1.3 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">{{ capLabel }}</div>
+              <div style="text-align:right"><span style="display:inline-flex;padding:3px 8px;border-radius:4px;background:var(--purple-bg);color:var(--purple);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">USER ASSUMPTION</span></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1.6fr 1fr 1fr;padding:12px 16px;border-bottom:1px solid var(--line);align-items:center">
+              <div style="font:400 13px/1.3 'IBM Plex Sans',sans-serif">Buildable area — FAR 0.7</div>
+              <div style="text-align:right;font:500 13px/1.3 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">6,177 GSF</div>
+              <div style="text-align:right"><span style="display:inline-flex;padding:3px 8px;border-radius:4px;background:var(--orange-bg);color:var(--orange);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">OFFICIAL · UNVERIFIED</span></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1.6fr 1fr 1fr;padding:12px 16px;align-items:center">
+              <div style="font:400 13px/1.3 'IBM Plex Sans',sans-serif">Height / coverage caps</div>
+              <div style="text-align:right;font:500 13px/1.3 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">42 ft · 60%</div>
+              <div style="text-align:right"><span style="display:inline-flex;padding:3px 8px;border-radius:4px;background:var(--orange-bg);color:var(--orange);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">OFFICIAL · UNVERIFIED</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px;display:flex;flex-direction:column;gap:20px">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Adjust assumptions</div>
+              <span style="padding:3px 8px;border-radius:4px;background:var(--purple-bg);color:var(--purple);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">USER</span>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline">
+                <span style="font:400 12px/1 'IBM Plex Sans',sans-serif;color:var(--ink2)">Rent / unit / month</span>
+                <span style="font:600 15px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">{{ rentMoney }}</span>
+              </div>
+              <input type="range" min="1600" max="3200" step="50" value="{{ rent }}" onChange="{{ onRent }}" style="width:100%;accent-color:var(--blue)">
+              <div style="display:flex;justify-content:space-between;font:400 10px/1 'IBM Plex Mono',monospace;color:var(--ink3)"><span>$1,600</span><span>$3,200</span></div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline">
+                <span style="font:400 12px/1 'IBM Plex Sans',sans-serif;color:var(--ink2)">Hard cost / GSF</span>
+                <span style="font:600 15px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">{{ psfMoney }}</span>
+              </div>
+              <input type="range" min="200" max="450" step="5" value="{{ psf }}" onChange="{{ onPsf }}" style="width:100%;accent-color:var(--blue)">
+              <div style="display:flex;justify-content:space-between;font:400 10px/1 'IBM Plex Mono',monospace;color:var(--ink3)"><span>$200</span><span>$450</span></div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline">
+                <span style="font:400 12px/1 'IBM Plex Sans',sans-serif;color:var(--ink2)">Exit cap rate</span>
+                <span style="font:600 15px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">{{ capLabel }}</span>
+              </div>
+              <input type="range" min="4" max="9" step="0.1" value="{{ cap }}" onChange="{{ onCap }}" style="width:100%;accent-color:var(--blue)">
+              <div style="display:flex;justify-content:space-between;font:400 10px/1 'IBM Plex Mono',monospace;color:var(--ink3)"><span>4.0%</span><span>9.0%</span></div>
+            </div>
+
+            <div style="border-top:1px solid var(--line);padding-top:14px;display:flex;flex-direction:column;gap:6px">
+              <div style="font:400 12px/1 'IBM Plex Sans',sans-serif;color:var(--ink2)">Break-even acquisition price</div>
+              <div style="font:600 22px/1.1 'IBM Plex Sans',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.02em;{{ breakevenStyle }}">{{ breakevenMoney }}</div>
+              <div style="font:400 11px/1.45 'IBM Plex Mono',monospace;color:var(--ink3)">{{ breakevenNote }}</div>
+            </div>
+          </div>
+
+          <div style="background:var(--panel2);border:1px dashed var(--line2);border-radius:8px;padding:14px 16px;font:400 11px/1.6 'IBM Plex Mono',monospace;color:var(--ink3)">
+            Moving a slider changes only USER ASSUMPTION values. Official and unverified inputs stay locked to their source snapshot.
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:16px 24px;border-top:1px solid var(--line);background:var(--panel2);font:400 11px/1.6 'IBM Plex Mono',monospace;color:var(--ink3)">
+        PRELIMINARY REFERENCE ONLY — This pro forma inherits 8 unresolved items from the current-condition report. Feasibility cannot be relied upon until setbacks, parking, overlays and discretionary approvals are confirmed by a licensed professional.
+      </div>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light'|'dark'&quot;,&quot;section&quot;:&quot;Display&quot;},&quot;acqPrice&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:625000,&quot;min&quot;:200000,&quot;max&quot;:1500000,&quot;step&quot;:25000,&quot;unit&quot;:&quot;$&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Assumptions&quot;}}">
+class Component extends DCLogic {
+  state = { theme: 'light', rent: 2200, psf: 300, cap: 6.0, scenario: 'redev', statesPlain: [], statesMN: [], mnZoom: 'translate(0,0)' };
+
+  componentDidMount() {
+    this.setState({ theme: this.props.theme || 'light' });
+    this.loadMap();
+  }
+
+  loadScript(src) {
+    return new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = src; s.crossOrigin = 'anonymous';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+
+  async loadMap() {
+    try {
+      if (!window.d3) await this.loadScript('https://unpkg.com/d3@7.9.0/dist/d3.min.js');
+      if (!window.topojson) await this.loadScript('https://unpkg.com/topojson-client@3.1.0/dist/topojson-client.min.js');
+      const topo = await window.d3.json('https://unpkg.com/us-atlas@3.0.1/states-10m.json');
+      const fc = window.topojson.feature(topo, topo.objects.states);
+      const proj = window.d3.geoAlbersUsa().fitSize([1200, 750], fc);
+      const path = window.d3.geoPath(proj);
+      const plain = [], mn = [];
+      let c = [600, 375];
+      fc.features.forEach(f => {
+        const d = path(f);
+        if (!d) return;
+        const isMN = f.properties.name === 'Minnesota';
+        if (isMN) c = path.centroid(f);
+        plain.push({ d, fill: 'var(--map)' });
+        mn.push({ d, fill: isMN ? 'var(--map-hi)' : 'var(--map)' });
+      });
+      const k = 1.7;
+      this.setState({
+        statesPlain: plain, statesMN: mn,
+        mnZoom: 'translate(' + (600 - k * c[0]).toFixed(1) + ',' + (375 - k * c[1]).toFixed(1) + ') scale(' + k + ')'
+      });
+    } catch (e) { console.warn('map data unavailable', e); }
+  }
+
+  money(n, dec) {
+    return '$' + Math.abs(Math.round(n)).toLocaleString('en-US', { minimumFractionDigits: dec || 0, maximumFractionDigits: dec || 0 });
+  }
+
+  renderVals() {
+    const s = this.state;
+    const acq = this.props.acqPrice ?? 625000;
+    const units = 5, gsf = 6177;
+    const hard = gsf * s.psf;
+    const dev = hard + hard * 0.3200469;
+    const total = acq + dev;
+    const noi = units * s.rent * 12 * 0.95 - 32500;
+    const value = noi / (s.cap / 100);
+    const profit = value - total;
+    const good = profit >= 0;
+    const tabOn = "cursor:pointer;flex:1;border:none;border-radius:5px;padding:11px 12px;font:600 13px/1 'IBM Plex Sans',sans-serif;background:var(--blue);color:#fff";
+    const tabOff = "cursor:pointer;flex:1;border:none;border-radius:5px;padding:11px 12px;font:500 13px/1 'IBM Plex Sans',sans-serif;background:transparent;color:var(--ink2)";
+
+    return {
+      theme: s.theme,
+      toggleTheme: () => this.setState(p => ({ theme: p.theme === 'light' ? 'dark' : 'light' })),
+      statesPlain: s.statesPlain, statesMN: s.statesMN, mnZoom: s.mnZoom,
+      rent: s.rent, psf: s.psf, cap: s.cap,
+      onRent: e => this.setState({ rent: +e.target.value }),
+      onPsf: e => this.setState({ psf: +e.target.value }),
+      onCap: e => this.setState({ cap: +e.target.value }),
+      setScenarioCurrent: () => this.setState({ scenario: 'current' }),
+      setScenarioRedev: () => this.setState({ scenario: 'redev' }),
+      tabCurrent: s.scenario === 'current' ? tabOn : tabOff,
+      tabRedev: s.scenario === 'redev' ? tabOn : tabOff,
+      acqPlain: acq.toLocaleString('en-US'),
+      acqMoney: this.money(acq),
+      devMoney: this.money(dev),
+      totalMoney: this.money(total),
+      valueMoney: this.money(value),
+      noiMoney: this.money(noi),
+      yocLabel: (noi / dev * 100).toFixed(2) + '%',
+      capLabel: s.cap.toFixed(1) + '%',
+      rentMoney: this.money(s.rent),
+      psfMoney: this.money(s.psf),
+      breakevenMoney: value - dev >= 0 ? this.money(value - dev) : 'Not achievable',
+      breakevenNote: value - dev >= 0
+        ? 'Value minus development cost, at zero profit.'
+        : 'Development cost alone exceeds stabilized value by ' + this.money(dev - value) + '. No acquisition price — including $0 — makes this feasible at these assumptions.',
+      breakevenStyle: value - dev >= 0 ? 'color:var(--ink)' : 'color:var(--red)',
+      verdictStyle: good
+        ? 'background:var(--green-bg);border:1px solid var(--green);color:var(--green)'
+        : 'background:var(--red-bg);border:1px solid var(--red);color:var(--red)',
+      verdictKicker: good ? 'Preliminary — feasible at this price' : 'Preliminary — not feasible at this price',
+      verdictHeadline: (good ? 'Development profit +' : 'Development loss −') + this.money(profit),
+      verdictSub: 'Stabilized value ' + this.money(value) + (good ? ' exceeds ' : ' is below ') + 'total capital in ' + this.money(total) + '. At ' + this.money(acq) + ' acquisition you would ' + (good ? 'clear the cost basis' : 'overpay') + '.'
+    };
+  }
+}
+</script>
+</body>
+</html>

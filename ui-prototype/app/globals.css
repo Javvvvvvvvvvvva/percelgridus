@@ -1,0 +1,233 @@
+:root {
+  --canvas: #e9ebef;
+  --bg: #f4f5f7;
+  --panel: #ffffff;
+  --panel2: #f8f9fb;
+  --ink: #0e1420;
+  --ink2: #4a5568;
+  --ink3: #7b8798;
+  --line: #e2e6ec;
+  --line2: #cfd6e0;
+  --blue: #1d4ed8;
+  --blue-bg: #e7eefc;
+  --orange: #b45309;
+  --orange-bg: #fcf0df;
+  --gray: #50596a;
+  --gray-bg: #eceef2;
+  --purple: #6d28d9;
+  --purple-bg: #f0e9fd;
+  --red: #b3261e;
+  --red-bg: #fbeae8;
+  --green: #15803d;
+  --green-bg: #e6f4ea;
+  --map: #dfe4ec;
+  --map-hi: #1d4ed8;
+  --shadow: 0 1px 2px rgba(14, 20, 32, 0.06), 0 8px 24px rgba(14, 20, 32, 0.05);
+}
+
+:root[data-theme="dark"] {
+  --canvas: #05080d;
+  --bg: #0b0f16;
+  --panel: #121821;
+  --panel2: #0f151d;
+  --ink: #e9eef6;
+  --ink2: #9dabc0;
+  --ink3: #69788e;
+  --line: #222c3b;
+  --line2: #2e3a4c;
+  --blue: #7ba4ff;
+  --blue-bg: #152444;
+  --orange: #f0a45c;
+  --orange-bg: #3a2710;
+  --gray: #9aa6b8;
+  --gray-bg: #1c242f;
+  --purple: #b696f7;
+  --purple-bg: #291a49;
+  --red: #ff8a80;
+  --red-bg: #3d1a17;
+  --green: #63c98a;
+  --green-bg: #12301f;
+  --map: #1a2333;
+  --map-hi: #7ba4ff;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+}
+
+html {
+  background: var(--canvas);
+}
+
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: var(--blue);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  font-family: inherit;
+}
+
+input {
+  font-family: inherit;
+}
+
+@keyframes pgpulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.font-mono {
+  font-family: var(--font-mono), monospace;
+}
+
+/* ---- shared page layout ---- */
+
+.pg-page {
+  background: var(--canvas);
+  min-height: 100vh;
+  padding: 32px 20px 80px;
+}
+
+.pg-shell {
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pg-card {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+/* ---- responsive grids ---- */
+
+.pg-landing-frames {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  padding: 8px 24px 24px;
+}
+@media (max-width: 900px) {
+  .pg-landing-frames {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pg-grid-search {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 28px;
+  padding: 44px 32px 48px;
+}
+@media (max-width: 900px) {
+  .pg-grid-search {
+    grid-template-columns: 1fr;
+    padding: 28px 20px 32px;
+  }
+}
+
+.pg-grid-aside400 {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 24px;
+  padding: 24px;
+}
+@media (max-width: 980px) {
+  .pg-grid-aside400 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pg-grid-aside480 {
+  display: grid;
+  grid-template-columns: 1fr 480px;
+  gap: 24px;
+  padding: 24px;
+}
+@media (max-width: 980px) {
+  .pg-grid-aside480 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pg-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 560px) {
+  .pg-2col {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pg-3col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+@media (max-width: 700px) {
+  .pg-3col {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pg-summary-3col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+@media (max-width: 700px) {
+  .pg-summary-3col {
+    grid-template-columns: 1fr;
+  }
+}
+.pg-summary-3col > div {
+  border-right: 1px solid var(--line);
+}
+.pg-summary-3col > div:last-child {
+  border-right: none;
+}
+@media (max-width: 700px) {
+  .pg-summary-3col > div {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+  .pg-summary-3col > div:last-child {
+    border-bottom: none;
+  }
+}
+
+.pg-lineitem-row {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr;
+}
