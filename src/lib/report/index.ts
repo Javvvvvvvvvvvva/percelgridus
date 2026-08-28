@@ -7,3 +7,4 @@ export type {
   FactLine,
   GapLine,
 } from "./decision-report.js";
+export { renderHtmlReport } from "./html-report.js";
