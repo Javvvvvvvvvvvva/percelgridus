@@ -1,8 +1,8 @@
 // Ported 1:1 from the Claude Design prototype's `renderVals()` pro forma
 // logic (PARCELGRID US.dc.html) so the base case reproduces the figures
 // the user confirmed: $2,446,179 dev cost / $3,071,179 total / -$1,522,846.
-const BUILDABLE_GSF = 6177;
-const UNITS = 5;
+const DEFAULT_BUILDABLE_GSF = 6177;
+const DEFAULT_UNITS = 5;
 const SOFT_COST_FACTOR = 0.3200469;
 const ANNUAL_OPEX = 32500;
 const VACANCY = 0.05;
@@ -12,6 +12,9 @@ export type ProFormaInputs = {
   rentPerUnitMonth: number;
   hardCostPerGsf: number;
   exitCapRatePct: number;
+  /** Buildable area and unit count, from the real by-right envelope. */
+  buildableGsf?: number;
+  units?: number;
 };
 
 export function money(n: number, decimals = 0): string {
@@ -26,12 +29,14 @@ export function money(n: number, decimals = 0): string {
 
 export function computeProForma(inputs: ProFormaInputs) {
   const { acquisitionPrice, rentPerUnitMonth, hardCostPerGsf, exitCapRatePct } = inputs;
+  const buildableGsf = inputs.buildableGsf ?? DEFAULT_BUILDABLE_GSF;
+  const units = inputs.units ?? DEFAULT_UNITS;
 
-  const hardCost = BUILDABLE_GSF * hardCostPerGsf;
+  const hardCost = buildableGsf * hardCostPerGsf;
   const developmentCost = hardCost + hardCost * SOFT_COST_FACTOR;
   const totalCapitalIn = acquisitionPrice + developmentCost;
 
-  const noi = UNITS * rentPerUnitMonth * 12 * (1 - VACANCY) - ANNUAL_OPEX;
+  const noi = units * rentPerUnitMonth * 12 * (1 - VACANCY) - ANNUAL_OPEX;
   const stabilizedValue = noi / (exitCapRatePct / 100);
   const profit = stabilizedValue - totalCapitalIn;
   const feasible = profit >= 0;

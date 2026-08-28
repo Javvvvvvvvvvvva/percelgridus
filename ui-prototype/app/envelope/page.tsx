@@ -1,9 +1,17 @@
 import Link from "next/link";
 import { Header } from "@/components/header";
 import { Badge } from "@/components/badge";
-import { subjectParcel, envelope } from "@/lib/mock-data";
+import { getSiteAnalysis } from "@/lib/parcelgrid";
 
-export default function EnvelopePage() {
+export default async function EnvelopePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ address?: string }>;
+}) {
+  const { address } = await searchParams;
+  const sa = await getSiteAnalysis(address);
+  const subjectParcel = sa.parcel;
+  const envelope = sa.envelope;
   return (
     <div className="pg-page">
       <div className="pg-shell">
@@ -24,7 +32,7 @@ export default function EnvelopePage() {
               <div style={{ position: "relative", background: "var(--panel2)", borderRadius: 6, padding: 28, display: "grid", placeItems: "center", minHeight: 340 }}>
                 <div style={{ position: "relative", width: 420, maxWidth: "100%", height: 270, border: "2px solid var(--ink2)", borderRadius: 2, background: "var(--panel)" }}>
                   <div style={{ position: "absolute", top: -22, left: 0, fontFamily: "var(--font-mono), monospace", fontWeight: 500, fontSize: 11, lineHeight: 1, color: "var(--ink2)" }}>
-                    LOT {subjectParcel.lotAreaSf.toLocaleString("en-US")} SF
+                    LOT {(subjectParcel.lotAreaSf ?? 0).toLocaleString("en-US")} SF
                   </div>
                   <div style={{ position: "absolute", inset: 26, border: "1px dashed var(--orange)", borderRadius: 2 }} />
                   <div
@@ -45,10 +53,10 @@ export default function EnvelopePage() {
                     }}
                   >
                     <div style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 600, fontSize: 15, lineHeight: 1.2, color: "var(--blue)", fontVariantNumeric: "tabular-nums" }}>
-                      {envelope.maxFootprintSf.toLocaleString("en-US")} sf footprint
+                      {(envelope.maxFootprintSf ?? 0).toLocaleString("en-US")} sf footprint
                     </div>
                     <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 500, fontSize: 11, lineHeight: 1, color: "var(--blue)", opacity: 0.8 }}>
-                      {subjectParcel.maxLotCoveragePct}% LOT COVERAGE
+                      {subjectParcel.maxLotCoveragePct ?? "—"}% LOT COVERAGE
                     </div>
                   </div>
                   <div style={{ position: "absolute", left: 0, right: 0, bottom: -24, display: "flex", justifyContent: "center" }}>
@@ -82,7 +90,7 @@ export default function EnvelopePage() {
                     ))}
                   </div>
                   <div style={{ borderTop: "1px solid var(--line2)", paddingTop: 6, fontFamily: "var(--font-mono), monospace", fontWeight: 500, fontSize: 10, lineHeight: 1.3, color: "var(--ink2)", textAlign: "center" }}>
-                    {envelope.maxHeightFt} FT CAP
+                    {envelope.maxHeightFt ?? "—"} FT CAP
                     <br />≈ 3 STORIES
                   </div>
                 </div>
@@ -112,27 +120,27 @@ export default function EnvelopePage() {
               <div className="pg-2col">
                 <EnvelopeStat
                   label="Buildable floor area"
-                  value={envelope.buildableGsf.toLocaleString("en-US")}
+                  value={(envelope.buildableGsf ?? 0).toLocaleString("en-US")}
                   unit="GSF"
                   badges={[
                     { tone: "gray", label: "ALGORITHM" },
                     { tone: "orange", label: "UNVERIFIED" },
                   ]}
-                  source={`${subjectParcel.lotAreaSf.toLocaleString("en-US")} sf × FAR ${subjectParcel.maxFar} · §540.110`}
+                  source={`${(subjectParcel.lotAreaSf ?? 0).toLocaleString("en-US")} sf × FAR ${subjectParcel.maxFar} · §540.110`}
                 />
                 <EnvelopeStat
                   label="Max footprint"
-                  value={envelope.maxFootprintSf.toLocaleString("en-US")}
+                  value={(envelope.maxFootprintSf ?? 0).toLocaleString("en-US")}
                   unit="sf"
                   badges={[
                     { tone: "gray", label: "ALGORITHM" },
                     { tone: "orange", label: "UNVERIFIED" },
                   ]}
-                  source={`${subjectParcel.maxLotCoveragePct}% lot coverage · §540.910`}
+                  source={`${subjectParcel.maxLotCoveragePct ?? "—"}% lot coverage · §540.910`}
                 />
                 <EnvelopeStat
                   label="Max height"
-                  value={String(envelope.maxHeightFt)}
+                  value={String(envelope.maxHeightFt ?? "—")}
                   unit="ft"
                   badges={[
                     { tone: "blue", label: "OFFICIAL" },
@@ -142,7 +150,7 @@ export default function EnvelopePage() {
                 />
                 <EnvelopeStat
                   label="Indicative units"
-                  value={String(envelope.indicativeUnits)}
+                  value={String(envelope.indicativeUnits ?? "—")}
                   unit="units"
                   badges={[{ tone: "purple", label: "USER ASSUMPTION" }]}
                   source={`@ ${envelope.gsfPerUnit.toLocaleString("en-US")} GSF/unit · conflicts with 3-family use cap`}

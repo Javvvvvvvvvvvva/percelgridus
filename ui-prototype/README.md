@@ -1,7 +1,33 @@
-# UI prototype (not wired to `src/lib`)
+# UI prototype (wired to `src/lib`)
 
-This folder is a **Claude Design handoff implementation**, pushed on a dedicated
-branch and kept out of `main` on purpose.
+This folder is a **Claude Design handoff implementation**, now connected to the
+PARCELGRID library.
+
+## Wired to the real library
+
+`lib/parcelgrid.ts` is a **server-side bridge**: it runs the library's
+`intakeSite` pipeline (Census → Hennepin → FEMA → USGS → zoning), builds the
+decision report + by-right massing program + pro forma, and returns a plain
+`SiteAnalysis` the pages render. Every fact keeps its provenance/verification;
+unresolved values come back `null`, never a fabricated number.
+
+- `app/report/page.tsx`, `app/envelope/page.tsx`, `app/proforma/page.tsx` are
+  **server-rendered on demand** — they call `getSiteAnalysis(address)` and show
+  live data (verified end-to-end: `2320 Colfax Ave S` → APN 3302924110099, UN2,
+  42 ft / FAR 0.7 / 60 % coverage, 6,177 buildable GSF, 8 approval blockers,
+  with §540.x / §545.100 citations).
+- `app/proforma/proforma-client.tsx` keeps the interactive sliders (user
+  assumptions); the server wrapper seeds it with the real buildable envelope.
+- `app/page.tsx` (landing) and `app/search/page.tsx` stay static; `lib/mock-data.ts`
+  now only backs the search page's recent-lookups list.
+
+Build/run uses webpack (`next … --webpack`) with `experimental.externalDir` +
+`resolve.extensionAlias` so the Next bundler can import the library's ESM
+`.js`-specified TypeScript sources from `../../src/lib`. See `next.config.ts`.
+
+Still to do: bind the report's flood/topography fact cards from
+`sa.report.facts` (they currently keep the design's static copy), and add an
+address form on the landing/search page that passes `?address=` through.
 
 `README-US.md` / `PROJECT_MEMORY.md` at the repo root are explicit that this
 project implements contracts and providers before screens (see

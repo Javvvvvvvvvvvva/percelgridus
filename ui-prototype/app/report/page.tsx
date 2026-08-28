@@ -2,15 +2,25 @@ import Link from "next/link";
 import { Header } from "@/components/header";
 import { Badge, LegendSwatch } from "@/components/badge";
 import { FactCard } from "@/components/fact-card";
-import { subjectParcel, openItems, TOTAL_OPEN_ITEMS } from "@/lib/mock-data";
+import { getSiteAnalysis } from "@/lib/parcelgrid";
 
 export default async function ReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ scenario?: string }>;
+  searchParams: Promise<{ scenario?: string; address?: string }>;
 }) {
-  const { scenario } = await searchParams;
+  const { scenario, address } = await searchParams;
   const isRedev = scenario !== "current";
+
+  // Real data from the PARCELGRID library (Census → Hennepin → FEMA → USGS →
+  // zoning), replacing the design's static mock.
+  const sa = await getSiteAnalysis(address);
+  const subjectParcel = { ...sa.parcel, ward: null as string | null, builtForm: null as string | null };
+  const openItems = sa.report.gaps.map((g) => ({
+    title: g.label,
+    detail: `Owner: ${g.owner} · ${g.subject}`,
+  }));
+  const TOTAL_OPEN_ITEMS = sa.openItemCount;
 
   return (
     <div className="pg-page">
@@ -85,9 +95,9 @@ export default async function ReportPage({
                   {subjectParcel.address}
                 </div>
                 <div style={{ display: "flex", gap: 20, fontFamily: "var(--font-mono), monospace", fontSize: 12, lineHeight: 1, color: "var(--ink2)", flexWrap: "wrap" }}>
-                  <span>APN {subjectParcel.apn}</span>
+                  <span>APN {subjectParcel.apn ?? "—"}</span>
                   <span>Owner: [on record]</span>
-                  <span>{subjectParcel.ward}</span>
+                  {subjectParcel.ward ? <span>{subjectParcel.ward}</span> : null}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <Badge tone="blue">OFFICIAL · VERIFIED</Badge>
@@ -100,7 +110,7 @@ export default async function ReportPage({
               <div className="pg-2col">
                 <FactCard
                   label="Lot area"
-                  value={<>{subjectParcel.lotAreaSf.toLocaleString("en-US")} <span style={{ fontSize: 14, color: "var(--ink2)" }}>sq ft</span></>}
+                  value={<>{(subjectParcel.lotAreaSf ?? 0).toLocaleString("en-US")} <span style={{ fontSize: 14, color: "var(--ink2)" }}>sq ft</span></>}
                   badges={[{ tone: "blue", label: "OFFICIAL · VERIFIED" }]}
                   source="Hennepin County GIS parcel polygon"
                 />
@@ -123,8 +133,8 @@ export default async function ReportPage({
                 />
                 <FactCard
                   label="Zoning district"
-                  value={subjectParcel.zoningDistrict}
-                  sub={`${subjectParcel.zoningName} · Built form: ${subjectParcel.builtForm}`}
+                  value={subjectParcel.zoningDistrict ?? "—"}
+                  sub={subjectParcel.builtForm ? `${subjectParcel.zoningName} · Built form: ${subjectParcel.builtForm}` : (subjectParcel.zoningName ?? "")}
                   badges={[{ tone: "blue", label: "OFFICIAL · VERIFIED" }]}
                   source="City of Minneapolis zoning + built-form GIS"
                 />
@@ -155,7 +165,7 @@ export default async function ReportPage({
                 </div>
                 <FactCard
                   label="Maximum height"
-                  value={<>{subjectParcel.maxHeightFt} <span style={{ fontSize: 14, color: "var(--ink2)" }}>ft</span></>}
+                  value={<>{subjectParcel.maxHeightFt ?? "—"} <span style={{ fontSize: 14, color: "var(--ink2)" }}>ft</span></>}
                   badges={[
                     { tone: "blue", label: "OFFICIAL" },
                     { tone: "orange", label: "UNVERIFIED" },
@@ -164,7 +174,7 @@ export default async function ReportPage({
                 />
                 <FactCard
                   label="Maximum FAR"
-                  value={subjectParcel.maxFar}
+                  value={subjectParcel.maxFar ?? "—"}
                   sub="Three-family dwelling tier"
                   badges={[
                     { tone: "blue", label: "OFFICIAL" },
@@ -174,7 +184,7 @@ export default async function ReportPage({
                 />
                 <FactCard
                   label="Maximum lot coverage"
-                  value={<>{subjectParcel.maxLotCoveragePct}<span style={{ fontSize: 14, color: "var(--ink2)" }}>%</span></>}
+                  value={<>{subjectParcel.maxLotCoveragePct ?? "—"}<span style={{ fontSize: 14, color: "var(--ink2)" }}>%</span></>}
                   badges={[
                     { tone: "blue", label: "OFFICIAL" },
                     { tone: "orange", label: "UNVERIFIED" },
