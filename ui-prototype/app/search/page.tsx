@@ -13,6 +13,12 @@ type Scenario = "current" | "redev";
 export default function SearchPage() {
   const router = useRouter();
   const [scenario, setScenario] = useState<Scenario>("redev");
+  const [address, setAddress] = useState(subjectParcel.address);
+
+  const analyze = (addr: string) =>
+    router.push(
+      `/report?scenario=${scenario}&address=${encodeURIComponent(addr.trim())}`,
+    );
 
   const tabStyle = (active: boolean): React.CSSProperties => ({
     cursor: "pointer",
@@ -53,13 +59,29 @@ export default function SearchPage() {
                   <span style={{ color: "var(--blue)", fontFamily: "var(--font-mono), monospace", fontWeight: 500, fontSize: 15, lineHeight: 1 }}>
                     ⌕
                   </span>
-                  <span style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 500, fontSize: 19, lineHeight: 1, color: "var(--ink)" }}>
-                    {subjectParcel.address}
-                  </span>
+                  <input
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && address.trim()) analyze(address);
+                    }}
+                    placeholder="Street address, Minneapolis, MN"
+                    style={{
+                      flex: 1,
+                      border: "none",
+                      outline: "none",
+                      background: "transparent",
+                      fontFamily: "var(--font-sans), sans-serif",
+                      fontWeight: 500,
+                      fontSize: 19,
+                      lineHeight: 1,
+                      color: "var(--ink)",
+                    }}
+                  />
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center", fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.4, color: "var(--ink3)" }}>
                   <Badge tone="blue">OFFICIAL</Badge>
-                  Matched to APN {subjectParcel.apn} · Hennepin County parcel layer
+                  Matched on the Hennepin County parcel layer (pilot: Minneapolis)
                 </div>
               </div>
 
@@ -119,7 +141,7 @@ export default function SearchPage() {
 
               <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                 <button
-                  onClick={() => router.push(`/report?scenario=${scenario}`)}
+                  onClick={() => analyze(address)}
                   style={{
                     cursor: "pointer",
                     border: "none",
@@ -148,7 +170,7 @@ export default function SearchPage() {
                 {recentLookups.map((lookup) => (
                   <Link
                     key={lookup.address}
-                    href={`/report?scenario=${scenario}`}
+                    href={`/report?scenario=${scenario}&address=${encodeURIComponent(lookup.address + ", Minneapolis, MN")}`}
                     style={{
                       background: "var(--panel)",
                       border: "1px solid var(--line)",

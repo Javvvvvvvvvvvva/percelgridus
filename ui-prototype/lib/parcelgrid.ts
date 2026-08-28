@@ -59,6 +59,19 @@ export interface ProFormaSeed {
   readonly exitCapRatePct: number;
 }
 
+export interface FloodSummary {
+  readonly zone: string;
+  readonly inSfha: boolean;
+  readonly source: string | null;
+}
+
+export interface TerrainSummaryUi {
+  readonly minFt: number;
+  readonly maxFt: number;
+  readonly slopePct: number;
+  readonly source: string | null;
+}
+
 export interface SiteAnalysis {
   readonly resolved: boolean;
   readonly parcel: ParcelSummary;
@@ -66,6 +79,8 @@ export interface SiteAnalysis {
   readonly envelope: EnvelopeSummary;
   readonly proFormaSeed: ProFormaSeed;
   readonly openItemCount: number;
+  readonly flood: FloodSummary | null;
+  readonly terrain: TerrainSummaryUi | null;
 }
 
 /** Assumptions the user drives; the library treats these as user-input evidence. */
@@ -188,11 +203,32 @@ export async function getSiteAnalysis(
     gsfPerUnit: a.avgUnitGsf,
   };
 
+  const flood: FloodSummary | null =
+    dd.flood && isEvidence(dd.flood)
+      ? {
+          zone: dd.flood.value.femaZone,
+          inSfha: dd.flood.value.inSfha,
+          source: dd.flood.source?.label ?? null,
+        }
+      : null;
+
+  const terrain: TerrainSummaryUi | null =
+    dd.terrain && isEvidence(dd.terrain)
+      ? {
+          minFt: Math.round(dd.terrain.value.minElevation.toFeet()),
+          maxFt: Math.round(dd.terrain.value.maxElevation.toFeet()),
+          slopePct: Math.round(dd.terrain.value.meanSlopePct * 10) / 10,
+          source: dd.terrain.source?.label ?? null,
+        }
+      : null;
+
   return {
     resolved: Boolean(parcelResolved),
     parcel: parcelSummary,
     report,
     envelope,
+    flood,
+    terrain,
     proFormaSeed: {
       buildableGsf,
       units,

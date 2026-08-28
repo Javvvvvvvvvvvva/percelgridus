@@ -116,20 +116,20 @@ export default async function ReportPage({
                 />
                 <FactCard
                   label="Flood exposure"
-                  value="Zone X"
-                  sub="Not a Special Flood Hazard Area"
+                  value={sa.flood ? `Zone ${sa.flood.zone}` : "—"}
+                  sub={sa.flood ? (sa.flood.inSfha ? "Special Flood Hazard Area" : "Not a Special Flood Hazard Area") : "Unresolved"}
                   badges={[{ tone: "blue", label: "OFFICIAL · VERIFIED" }]}
-                  source="FEMA NFHL, panel 27053C0362F"
+                  source={sa.flood?.source ?? "FEMA National Flood Hazard Layer"}
                 />
                 <FactCard
                   label="Topography"
-                  value={<>877–880 <span style={{ fontSize: 14, color: "var(--ink2)" }}>ft</span></>}
-                  sub="Mean slope 2.1% — buildable without terracing"
+                  value={<>{sa.terrain ? `${sa.terrain.minFt}–${sa.terrain.maxFt}` : "—"} <span style={{ fontSize: 14, color: "var(--ink2)" }}>ft</span></>}
+                  sub={sa.terrain ? `Mean slope ${sa.terrain.slopePct}% — coarse extent estimate` : "Unresolved"}
                   badges={[
                     { tone: "blue", label: "OFFICIAL" },
                     { tone: "gray", label: "ALGORITHM · SLOPE" },
                   ]}
-                  source="USGS 3DEP 1-m DEM, sampled on parcel"
+                  source={sa.terrain?.source ?? "USGS 3DEP (EPQS point samples)"}
                 />
                 <FactCard
                   label="Zoning district"
