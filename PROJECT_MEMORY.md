@@ -233,6 +233,21 @@ a translation.
      county `STREET_NM` spelling differs from the Census normalization still
      miss (honest Unresolved), a future street-normalization refinement.
 
+7. **Decision report** — `src/lib/report/`. `buildDecisionReport(dd)` turns a
+   `SiteDueDiligence` into a data model that splits resolved FACTS (each with its
+   provenance/confidence/verification and formatted source) from tracked GAPS
+   (subject/owner/required action, blocks-approval flag), and computes
+   `approvable` via `approvalBlockers` — false whenever any Unresolved or any
+   unverified official rule remains, which is the honest normal case. Model is
+   separate from rendering; `renderTextReport` is one renderer (an HTML/PDF one
+   can reuse the model). Verified end-to-end from a real address: `3300 Aldrich
+   Ave S` produces a report with 10 sourced facts (owner, 4,347 sq ft lot, FEMA
+   Zone X, USGS 872–873 ft terrain, UN2, 1–3 family uses, 35 ft height, 0.50
+   FAR, 45% coverage — each citing Census/Hennepin/FEMA/USGS/Chapter 540/545)
+   and open items flagged BLOCKS APPROVAL, decision "NOT APPROVABLE — 8 blocking
+   item(s)". This closes the README-US MVP loop: a real parcel from address to a
+   source-linked, professional-review-gated decision report.
+
 ### Runtime egress note
 
 Node's global `fetch` (undici) does not honor `HTTPS_PROXY` automatically. In
