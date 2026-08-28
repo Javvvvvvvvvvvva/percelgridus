@@ -66,4 +66,21 @@ suite("HennepinParcelProvider (live)", () => {
     },
     20_000,
   );
+
+  it(
+    "byAddress resolves the same parcel from its address attributes",
+    async () => {
+      const provider = new HennepinParcelProvider();
+      const record = await provider.byAddress(
+        "3300 ALDRICH AVE S, MINNEAPOLIS, MN, 55408",
+      );
+
+      if (isUnresolved(record)) throw new Error("expected a live parcel");
+      expect(findIdentifier(record.identity, HENNEPIN_APN_SYSTEM)?.value).toBe(
+        KNOWN_PID,
+      );
+      expect(isEvidence(record.geometry)).toBe(true);
+    },
+    20_000,
+  );
 });

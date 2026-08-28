@@ -33,24 +33,29 @@ suite("intakeSite (live)", () => {
 
       // Address normalized by the live Census geocoder.
       expect(isEvidence(dd.address)).toBe(true);
-      // The blocker sweep always produces a decision-ready list.
-      expect(Array.isArray(dd.blockers)).toBe(true);
 
-      // The pipeline is internally consistent whichever way the parcel goes.
-      // (Census geocoder points are interpolated and often land just off a
-      // small residential parcel, so byPoint may legitimately not match — see
-      // the intake header. A wrong-parcel guess is never made.)
+      // byAddress resolves the parcel against the county's own address index
+      // (robust to the geocoder point offset), so this known address completes
+      // end to end and persists.
+      expect(dd.parcel && !isUnresolved(dd.parcel)).toBe(true);
+      expect(dd.persisted).toBe(true);
+      expect(dd.siteId).toBeDefined();
+      expect(repo.getBySiteId(dd.siteId!)).toBeDefined();
       if (dd.parcel && !isUnresolved(dd.parcel)) {
-        expect(dd.persisted).toBe(true);
-        expect(dd.siteId).toBeDefined();
-        expect(repo.getBySiteId(dd.siteId!)).toBeDefined();
-        expect(dd.zoning).toBeDefined();
-        expect(isEvidence(dd.zoning!.zoningDistrict)).toBe(true);
-      } else {
-        expect(dd.persisted).toBe(false);
-        expect(repo.list()).toHaveLength(0);
-        expect(dd.blockers.length).toBeGreaterThan(0);
+        expect(dd.parcel.identity.apns[0]?.value).toBe("0402824140132");
       }
+
+      // Sourced by-right envelope: UN2 primary district, Interior 2 height.
+      expect(dd.zoning).toBeDefined();
+      expect(isEvidence(dd.zoning!.zoningDistrict)).toBe(true);
+      if (isEvidence(dd.zoning!.zoningDistrict)) {
+        expect(dd.zoning!.zoningDistrict.value).toBe("UN2");
+      }
+      if (isEvidence(dd.zoning!.maxHeight)) {
+        expect(dd.zoning!.maxHeight.value.toFeet()).toBeCloseTo(35);
+      }
+      // The blocker sweep produced a decision-ready list.
+      expect(dd.blockers.length).toBeGreaterThan(0);
     },
     45_000,
   );

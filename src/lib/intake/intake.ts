@@ -85,6 +85,23 @@ function hazardOf(
   return profile.hazardProviders.find((h) => h.hazardKind === kind);
 }
 
+/**
+ * Resolve the parcel, preferring the authoritative address match over the
+ * interpolated geocoder point. Falls back to the point when the provider has no
+ * `byAddress` or the address match doesn't resolve — never guesses a parcel.
+ */
+async function resolveParcel(
+  profile: JurisdictionProfile,
+  address: NormalizedAddress,
+): Promise<ParcelRecord | Unresolved> {
+  const provider = profile.parcelProvider;
+  if (provider.byAddress) {
+    const byAddr = await provider.byAddress(address.normalized);
+    if (!isUnresolved(byAddr)) return byAddr;
+  }
+  return provider.byPoint(address.point);
+}
+
 /** Flatten a by-right envelope's evidence fields for the blocker sweep. */
 function envelopeItems(
   env: ByRightEnvelope,
@@ -120,8 +137,10 @@ export async function intakeSite(
     };
   }
 
-  // 2. Resolve the parcel by the geocoded point.
-  const parcel = await profile.parcelProvider.byPoint(address.value.point);
+  // 2. Resolve the parcel. Prefer an authoritative address-attribute match
+  //    (robust to the geocoder's point offset); fall back to the point only
+  //    when the address match is unavailable or doesn't resolve.
+  const parcel = await resolveParcel(profile, address.value);
   if (isUnresolved(parcel)) {
     return {
       rawAddress,

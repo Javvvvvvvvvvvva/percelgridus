@@ -63,6 +63,14 @@ export interface ParcelProvider {
   byPoint(point: GeoPoint): Promise<ParcelRecord | Unresolved>;
   /** Look up a parcel by an external identifier (e.g. an APN). */
   byIdentifier(id: ExternalIdentifier): Promise<ParcelRecord | Unresolved>;
+  /**
+   * Look up a parcel by a normalized address string, matched against the
+   * authority's own address attributes. Preferred over {@link byPoint} where a
+   * geocoded point is interpolated and may land off the lot; the adapter
+   * returns `Unresolved` rather than guessing when the address is ambiguous or
+   * unparseable. Optional — not every parcel source exposes an address index.
+   */
+  byAddress?(normalizedAddress: string): Promise<ParcelRecord | Unresolved>;
 }
 
 // ─────────────────────────── Zoning evidence ───────────────────────────

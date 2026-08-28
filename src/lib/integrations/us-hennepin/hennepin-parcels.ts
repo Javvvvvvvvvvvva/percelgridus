@@ -22,6 +22,7 @@
 
 import type { IsoDate } from "../../jurisdiction/evidence.js";
 import type { Unresolved } from "../../jurisdiction/evidence.js";
+import { unresolved } from "../../jurisdiction/evidence.js";
 import { newUuid } from "../../jurisdiction/identifiers.js";
 import type { ExternalIdentifier, SiteId } from "../../jurisdiction/identifiers.js";
 import type {
@@ -30,7 +31,11 @@ import type {
   ParcelRecord,
 } from "../../jurisdiction/providers.js";
 import type { HennepinParcelResponse } from "./parcel-response.js";
-import { parseParcelResponse } from "./parse-parcel.js";
+import {
+  parseAddressMatch,
+  parseParcelResponse,
+  parseUsAddress,
+} from "./parse-parcel.js";
 
 type FetchLike = (
   url: string,
@@ -123,6 +128,52 @@ export class HennepinParcelProvider implements ParcelProvider {
     const label = `${id.kind ?? "id"} "${id.value}"`;
     const body = await this.fetchJson(url, label);
     return parseParcelResponse(body, this.contextFor(url), label);
+  }
+
+  /**
+   * Build an address-attribute query URL. House number is exact; street and
+   * municipality use a prefix LIKE to tolerate the layer's fixed-width padding.
+   */
+  buildAddressUrl(a: {
+    houseNumber: number;
+    streetName: string;
+    municipality?: string;
+  }): string {
+    const clauses = [
+      `HOUSE_NO=${a.houseNumber}`,
+      `UPPER(STREET_NM) LIKE '${escapeSqlLiteral(a.streetName.toUpperCase())}%'`,
+    ];
+    if (a.municipality !== undefined) {
+      clauses.push(
+        `UPPER(MUNIC_NM) LIKE '${escapeSqlLiteral(a.municipality.toUpperCase())}%'`,
+      );
+    }
+    const params = new URLSearchParams({
+      where: clauses.join(" AND "),
+      outSR: "4326",
+      outFields: OUT_FIELDS,
+      returnGeometry: "true",
+      f: "json",
+    });
+    return `${this.baseUrl}?${params.toString()}`;
+  }
+
+  async byAddress(
+    normalizedAddress: string,
+  ): Promise<ParcelRecord | Unresolved> {
+    const parsed = parseUsAddress(normalizedAddress);
+    if (parsed === undefined) {
+      return unresolved(
+        "parcel match",
+        "user",
+        `Could not parse a house number and street from "${normalizedAddress}"; ` +
+          `look the parcel up by PID or a point instead.`,
+      );
+    }
+    const url = this.buildAddressUrl(parsed);
+    const label = `address "${normalizedAddress}"`;
+    const body = await this.fetchJson(url, label);
+    return parseAddressMatch(body, this.contextFor(url), label);
   }
 
   private contextFor(url: string): {

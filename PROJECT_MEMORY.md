@@ -218,13 +218,20 @@ a translation.
    address/parcel gaps, geometry-less); live smoke gated on `INTAKE_LIVE=1`
    asserts the pipeline's internal consistency end-to-end against the real
    Minneapolis profile.
-   - **Known limitation surfaced by the live run:** the Census geocoder point is
-     interpolated and often lands ~10–30 m off a small residential parcel (the
-     parcel's OWN address can miss it), so `byPoint` returns Unresolved for many
-     real addresses. The pipeline reports that honestly and never snaps to a
-     neighboring lot (wrong owner/APN). **Next step:** a
-     `ParcelProvider.byAddress` that matches the county layer's own address
-     attributes (HOUSE_NO/STREET_NM) instead of a fragile geocoded point.
+   - **Parcel by address (resolves the geocoder-offset problem):** the Census
+     geocoder point is interpolated and often lands ~10–30 m off a small
+     residential parcel (the parcel's OWN address can miss it), so `byPoint`
+     alone returned Unresolved for most real addresses. Added
+     `ParcelProvider.byAddress?` (optional on the contract) and implemented it
+     on Hennepin: `parseUsAddress` splits the normalized address into
+     house/street/municipality, and the layer is queried by its OWN address
+     attributes (`HOUSE_NO`, `STREET_NM`, `MUNIC_NM`); `parseAddressMatch`
+     enforces a single PID (distinct PIDs → Unresolved, never a guess).
+     `intakeSite` now prefers `byAddress`, falling back to `byPoint`. Live E2E
+     now completes: `3300 Aldrich Ave S` and `2320 Colfax Ave S` resolve to
+     their parcels and persist with a full zoning envelope. Addresses whose
+     county `STREET_NM` spelling differs from the Census normalization still
+     miss (honest Unresolved), a future street-normalization refinement.
 
 ### Runtime egress note
 

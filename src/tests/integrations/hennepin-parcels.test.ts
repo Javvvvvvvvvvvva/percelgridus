@@ -5,6 +5,8 @@ import {
   HennepinParcelProvider,
   HennepinParcelError,
   parseParcelResponse,
+  parseAddressMatch,
+  parseUsAddress,
   HENNEPIN_APN_SYSTEM,
   type HennepinParcelResponse,
 } from "@/lib/integrations/us-hennepin/index.js";
@@ -109,11 +111,94 @@ describe("parseParcelResponse", () => {
   });
 });
 
+describe("parseUsAddress", () => {
+  it("splits a Census-normalized address into house/street/municipality", () => {
+    expect(
+      parseUsAddress("3300 ALDRICH AVE S, MINNEAPOLIS, MN, 55408"),
+    ).toEqual({
+      houseNumber: 3300,
+      streetName: "ALDRICH AVE S",
+      municipality: "MINNEAPOLIS",
+    });
+  });
+
+  it("returns undefined when there is no leading house number", () => {
+    expect(parseUsAddress("ALDRICH AVE S, MINNEAPOLIS, MN")).toBeUndefined();
+    expect(parseUsAddress("")).toBeUndefined();
+  });
+});
+
+describe("parseAddressMatch", () => {
+  it("resolves several rows sharing one PID to that parcel", () => {
+    const record = parseAddressMatch(
+      {
+        features: [
+          fixture("hennepin-parcel-match").features![0]!,
+          fixture("hennepin-parcel-match").features![0]!,
+        ],
+      },
+      CTX,
+      'address "x"',
+    );
+    expect(isUnresolved(record)).toBe(false);
+  });
+
+  it("returns Unresolved (ambiguous) when the address hits distinct PIDs", () => {
+    const a = fixture("hennepin-parcel-match").features![0]!;
+    const b = {
+      ...a,
+      attributes: { ...a.attributes, PID: "9999999999999" },
+    };
+    const record = parseAddressMatch({ features: [a, b] }, CTX, 'address "x"');
+    expect(isUnresolved(record)).toBe(true);
+    if (isUnresolved(record)) {
+      expect(record.requiredAction).toContain("more than one");
+    }
+  });
+});
+
 describe("HennepinParcelProvider", () => {
   const okResponse = (body: unknown) => ({
     ok: true,
     status: 200,
     json: async () => body,
+  });
+
+  it("byAddress builds a house/street predicate and parses the match", async () => {
+    let calledUrl = "";
+    const provider = new HennepinParcelProvider({
+      fetchImpl: async (url) => {
+        calledUrl = url;
+        return okResponse(fixture("hennepin-parcel-match"));
+      },
+      newSiteId: () => FIXED_SITE_ID,
+    });
+
+    const record = await provider.byAddress(
+      "3300 ALDRICH AVE S, MINNEAPOLIS, MN, 55408",
+    );
+    // URLSearchParams encodes spaces as '+'; normalize for readability.
+    const decoded = decodeURIComponent(calledUrl).replace(/\+/g, " ");
+    expect(decoded).toContain("HOUSE_NO=3300");
+    expect(decoded).toContain("UPPER(STREET_NM) LIKE 'ALDRICH AVE S%'");
+    expect(decoded).toContain("UPPER(MUNIC_NM) LIKE 'MINNEAPOLIS%'");
+    if (isUnresolved(record)) throw new Error("expected a record");
+    expect(findIdentifier(record.identity, HENNEPIN_APN_SYSTEM)?.value).toBe(
+      "0402824140132",
+    );
+  });
+
+  it("byAddress returns Unresolved for an unparseable address, no fetch", async () => {
+    let fetched = false;
+    const provider = new HennepinParcelProvider({
+      fetchImpl: async () => {
+        fetched = true;
+        return okResponse(fixture("hennepin-parcel-match"));
+      },
+    });
+    const record = await provider.byAddress("PO Box 7, Minneapolis, MN");
+    expect(fetched).toBe(false);
+    expect(isUnresolved(record)).toBe(true);
   });
 
   it("byPoint builds an intersects query and parses the result", async () => {

@@ -45,6 +45,40 @@ function trimmed(value: string | undefined): string | undefined {
   return t.length > 0 ? t : undefined;
 }
 
+/** The house-number / street / municipality parts of a normalized address. */
+export interface AddressComponents {
+  readonly houseNumber: number;
+  readonly streetName: string;
+  readonly municipality?: string;
+}
+
+/**
+ * Parse a Census-normalized one-line address ("3300 ALDRICH AVE S, MINNEAPOLIS,
+ * MN, 55408") into the parts the Hennepin parcel layer keys on. Returns
+ * `undefined` when there is no leading integer house number to key on (e.g. a
+ * fractional or unit-only address) — the caller then falls back rather than
+ * guessing. This is a locator parse, not a geocode: it never invents a street.
+ */
+export function parseUsAddress(
+  normalized: string,
+): AddressComponents | undefined {
+  const parts = normalized.split(",");
+  const houseStreet = (parts[0] ?? "").trim();
+  const m = /^(\d+)\s+(.+)$/.exec(houseStreet);
+  if (!m) return undefined;
+  const houseNumber = Number(m[1]);
+  const streetName = m[2]!.trim();
+  if (!Number.isInteger(houseNumber) || streetName.length === 0) {
+    return undefined;
+  }
+  const municipality = trimmed(parts[1]);
+  return {
+    houseNumber,
+    streetName,
+    ...(municipality !== undefined ? { municipality } : {}),
+  };
+}
+
 function source(ctx: ParseParcelContext): SourceRef {
   return {
     label: "Hennepin County GIS — County Parcels",
@@ -164,5 +198,49 @@ export function parseParcelResponse(
     );
   }
 
+  return parseParcelFeature(features[0]!, ctx);
+}
+
+/**
+ * Resolve an address query to a single parcel. Unlike {@link parseParcelResponse}
+ * (which takes the first of a spatial match), this enforces uniqueness by PID:
+ * more than one distinct parcel for an address is ambiguous — a duplicate
+ * address across parcels — and returns `Unresolved` rather than picking one.
+ * Several rows sharing one PID (a multi-address parcel) resolve to that parcel.
+ */
+export function parseAddressMatch(
+  response: HennepinParcelResponse,
+  ctx: ParseParcelContext,
+  subject: string,
+): ParcelRecord | Unresolved {
+  if (response.error !== undefined) {
+    return unresolved(
+      "parcel lookup",
+      "user",
+      `Hennepin parcel service returned an error for ${subject}: ${
+        response.error.message ?? "unknown error"
+      }.`,
+    );
+  }
+  const features = response.features ?? [];
+  if (features.length === 0) {
+    return unresolved(
+      "parcel match",
+      "user",
+      `No Hennepin parcel matched ${subject} by address; the address may be ` +
+        `outside Minneapolis, or spelled differently in the county layer.`,
+    );
+  }
+  const distinctPids = new Set(
+    features.map((f) => trimmed(f.attributes?.PID)).filter((p) => p !== undefined),
+  );
+  if (distinctPids.size > 1) {
+    return unresolved(
+      "parcel match",
+      "user",
+      `${subject} matched more than one Hennepin parcel ` +
+        `(${[...distinctPids].join(", ")}); resolve which parcel by PID.`,
+    );
+  }
   return parseParcelFeature(features[0]!, ctx);
 }
