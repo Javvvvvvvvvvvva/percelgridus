@@ -4,8 +4,12 @@
  *
  * The parcel geometry is queried directly (polygon-intersects) so a lot that
  * straddles a flood boundary is caught; the pure parser aggregates the
- * intersecting zones worst-case. `fetchImpl` is injected for testing without
- * network and for a proxy-aware fetch where egress is mediated.
+ * intersecting zones worst-case. The query is issued as a POST with the
+ * geometry in the request body — a detailed parcel boundary (many vertices, as
+ * a lakefront or riverfront lot has) overflows the server's URL/header limits
+ * as a GET and returns HTTP 414/431, which would abort the whole analysis.
+ * `fetchImpl` is injected for testing without network and for a proxy-aware
+ * fetch where egress is mediated.
  *
  * Network note: outbound HTTPS to hazards.fema.gov is reachable from an
  * environment whose egress policy allowlists that host, and the provider has
@@ -25,9 +29,16 @@ import type {
 import type { NfhlResponse } from "./nfhl-response.js";
 import { parseFloodZones } from "./parse-flood.js";
 
+interface FetchInit {
+  readonly signal?: AbortSignal;
+  readonly method?: string;
+  readonly headers?: Record<string, string>;
+  readonly body?: string;
+}
+
 type FetchLike = (
   url: string,
-  init?: { signal?: AbortSignal },
+  init?: FetchInit,
 ) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;
 
 export interface FemaFloodConfig {
@@ -70,13 +81,19 @@ export class FemaFloodProvider implements HazardProvider {
     this.timeoutMs = config.timeoutMs ?? 10_000;
   }
 
-  /** Build a polygon-intersection query URL from parcel rings (WGS84). */
-  buildUrl(geometry: PolygonCoordinates): string {
+  /**
+   * Build the polygon-intersection query as a form-encoded body from parcel
+   * rings (WGS84). The geometry is sent in the POST body, never the URL: a
+   * detailed parcel boundary (a lakefront or riverfront lot with many vertices)
+   * overflows the server's URL/header limits and returns HTTP 414/431, which
+   * would abort the whole site analysis. A POST body has no such limit.
+   */
+  queryBody(geometry: PolygonCoordinates): string {
     const esriPolygon = JSON.stringify({
       rings: geometry,
       spatialReference: { wkid: 4326 },
     });
-    const params = new URLSearchParams({
+    return new URLSearchParams({
       geometry: esriPolygon,
       geometryType: "esriGeometryPolygon",
       inSR: "4326",
@@ -84,20 +101,24 @@ export class FemaFloodProvider implements HazardProvider {
       outFields: OUT_FIELDS,
       returnGeometry: "false",
       f: "json",
-    });
-    return `${this.baseUrl}?${params.toString()}`;
+    }).toString();
   }
 
   async flood(
     geometry: PolygonCoordinates,
   ): Promise<Evidence<FloodHazard> | Unresolved> {
-    const url = this.buildUrl(geometry);
+    const body = this.queryBody(geometry);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
 
     let response: Awaited<ReturnType<FetchLike>>;
     try {
-      response = await this.fetchImpl(url, { signal: controller.signal });
+      response = await this.fetchImpl(this.baseUrl, {
+        signal: controller.signal,
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body,
+      });
     } catch (cause) {
       throw new FemaFloodError("FEMA NFHL request failed", cause);
     } finally {
@@ -110,16 +131,16 @@ export class FemaFloodProvider implements HazardProvider {
       );
     }
 
-    let body: NfhlResponse;
+    let responseBody: NfhlResponse;
     try {
-      body = (await response.json()) as NfhlResponse;
+      responseBody = (await response.json()) as NfhlResponse;
     } catch (cause) {
       throw new FemaFloodError("FEMA NFHL returned non-JSON", cause);
     }
 
-    return parseFloodZones(body, {
+    return parseFloodZones(responseBody, {
       retrievalDate: isoDate(this.now()),
-      locator: url,
+      locator: this.baseUrl,
       subject: "the parcel",
     });
   }

@@ -89,22 +89,50 @@ describe("FemaFloodProvider", () => {
     json: async () => body,
   });
 
-  it("builds a polygon-intersects query and parses the result", async () => {
+  it("sends the polygon-intersects query as a POST body, not in the URL", async () => {
     let calledUrl = "";
+    let calledInit: { method?: string; body?: string } | undefined;
     const provider = new FemaFloodProvider({
-      fetchImpl: async (url) => {
+      fetchImpl: async (url, init) => {
         calledUrl = url;
+        calledInit = init;
         return okResponse(fixture("fema-flood-x"));
       },
       now: () => new Date("2026-08-26T00:00:00Z"),
     });
 
     const result = await provider.flood(SQUARE);
-    expect(calledUrl).toContain("geometryType=esriGeometryPolygon");
-    expect(calledUrl).toContain("esriSpatialRelIntersects");
+    // Geometry travels in the POST body; the URL stays the bare endpoint.
+    expect(calledInit?.method).toBe("POST");
+    expect(calledUrl).not.toContain("geometry");
+    expect(calledInit?.body).toContain("geometryType=esriGeometryPolygon");
+    expect(calledInit?.body).toContain("esriSpatialRelIntersects");
     if (!isEvidence(result)) throw new Error("expected evidence");
     expect(result.value.femaZone).toBe("X");
     expect(result.source?.locator).toBe(calledUrl);
+  });
+
+  it("keeps a many-vertex boundary out of the URL (avoids HTTP 414/431)", async () => {
+    // A detailed polygon that, packed into a GET URL, would overflow the limit
+    // that lakefront/riverfront parcels hit in production.
+    const ring: number[][] = [];
+    for (let i = 0; i < 600; i++) {
+      ring.push([-93.29 + i * 1e-5, 44.94 + (i % 2) * 1e-5]);
+    }
+    ring.push([-93.29, 44.94]); // close the ring
+    let calledUrl = "";
+    const provider = new FemaFloodProvider({
+      fetchImpl: async (url) => {
+        calledUrl = url;
+        return okResponse(fixture("fema-flood-x"));
+      },
+    });
+    await provider.flood([ring]);
+    // The URL is the bare endpoint; the ~15KB geometry is in the body instead.
+    expect(calledUrl).toBe(
+      "https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28/query",
+    );
+    expect(calledUrl.length).toBeLessThan(120);
   });
 
   it("throws FemaFloodError on a non-OK HTTP status", async () => {

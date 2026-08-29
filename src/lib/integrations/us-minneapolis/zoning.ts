@@ -66,9 +66,16 @@ import {
   minneapolisCitation,
 } from "./zoning-shared.js";
 
+interface FetchInit {
+  readonly signal?: AbortSignal;
+  readonly method?: string;
+  readonly headers?: Record<string, string>;
+  readonly body?: string;
+}
+
 type FetchLike = (
   url: string,
-  init?: { signal?: AbortSignal },
+  init?: FetchInit,
 ) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;
 
 export interface MinneapolisZoningConfig {
@@ -130,17 +137,19 @@ export class MinneapolisZoningProvider implements ZoningEvidenceProvider {
     this.timeoutMs = config.timeoutMs ?? 10_000;
   }
 
-  /** Build a polygon-intersection query URL from parcel rings (WGS84). */
-  private buildQueryUrl(
-    baseUrl: string,
-    geometry: PolygonCoordinates,
-    outFields: string,
-  ): string {
+  /**
+   * Build a polygon-intersection query as a form-encoded POST body from parcel
+   * rings (WGS84). The geometry goes in the body, never the URL: a detailed
+   * parcel boundary (a lakefront or riverfront lot with many vertices) overflows
+   * the server's URL/header limits as a GET and returns HTTP 414/431, which
+   * would abort the whole analysis.
+   */
+  private queryBody(geometry: PolygonCoordinates, outFields: string): string {
     const esriPolygon = JSON.stringify({
       rings: geometry,
       spatialReference: { wkid: 4326 },
     });
-    const params = new URLSearchParams({
+    return new URLSearchParams({
       geometry: esriPolygon,
       geometryType: "esriGeometryPolygon",
       inSR: "4326",
@@ -148,12 +157,11 @@ export class MinneapolisZoningProvider implements ZoningEvidenceProvider {
       outFields,
       returnGeometry: "false",
       f: "json",
-    });
-    return `${baseUrl}?${params.toString()}`;
+    }).toString();
   }
 
   /**
-   * Build a count-only polygon-intersection query for one overlay sublayer.
+   * Build a count-only polygon-intersection query body for one overlay sublayer.
    * Presence (count > 0) is all the overlay resolution needs; the overlay's
    * name comes from the transcribed sublayer set, so no attributes are fetched.
    *
@@ -165,15 +173,12 @@ export class MinneapolisZoningProvider implements ZoningEvidenceProvider {
    * name keeps only genuine overlay features; the clean sublayers all populate
    * SYMBOL_NAM, so the filter is harmless there.
    */
-  private buildOverlayCountUrl(
-    layerId: number,
-    geometry: PolygonCoordinates,
-  ): string {
+  private overlayCountBody(geometry: PolygonCoordinates): string {
     const esriPolygon = JSON.stringify({
       rings: geometry,
       spatialReference: { wkid: 4326 },
     });
-    const params = new URLSearchParams({
+    return new URLSearchParams({
       geometry: esriPolygon,
       geometryType: "esriGeometryPolygon",
       inSR: "4326",
@@ -181,8 +186,7 @@ export class MinneapolisZoningProvider implements ZoningEvidenceProvider {
       where: "SYMBOL_NAM IS NOT NULL",
       returnCountOnly: "true",
       f: "json",
-    });
-    return `${this.overlayBaseUrl}/${layerId}/query?${params.toString()}`;
+    }).toString();
   }
 
   /**
@@ -202,11 +206,15 @@ export class MinneapolisZoningProvider implements ZoningEvidenceProvider {
       retrievalDate,
     };
     try {
+      const body = this.overlayCountBody(geometry);
       const probes = await Promise.all(
         MINNEAPOLIS_OVERLAY_LAYERS.map(
           async (layer: OverlayLayer): Promise<OverlayProbe> => {
-            const url = this.buildOverlayCountUrl(layer.layerId, geometry);
-            const response = (await this.fetchJson(url)) as OverlayCountResponse;
+            const url = `${this.overlayBaseUrl}/${layer.layerId}/query`;
+            const response = (await this.fetchJson(
+              url,
+              body,
+            )) as OverlayCountResponse;
             return { name: layer.name, response };
           },
         ),
@@ -219,13 +227,23 @@ export class MinneapolisZoningProvider implements ZoningEvidenceProvider {
     }
   }
 
-  private async fetchJson(url: string): Promise<unknown> {
+  /** GET `url`, or POST `body` (form-encoded) when supplied. */
+  private async fetchJson(url: string, body?: string): Promise<unknown> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
 
     let response: Awaited<ReturnType<FetchLike>>;
     try {
-      response = await this.fetchImpl(url, { signal: controller.signal });
+      response = await this.fetchImpl(url, {
+        signal: controller.signal,
+        ...(body !== undefined
+          ? {
+              method: "POST",
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body,
+            }
+          : {}),
+      });
     } catch (cause) {
       throw new MinneapolisZoningError(
         "Minneapolis zoning request failed",
@@ -271,34 +289,31 @@ export class MinneapolisZoningProvider implements ZoningEvidenceProvider {
     }
 
     const retrievalDate = isoDate(this.now());
-    const primaryUrl = this.buildQueryUrl(
-      this.baseUrl,
-      geometry,
-      PRIMARY_OUT_FIELDS,
-    );
-    const builtFormUrl = this.buildQueryUrl(
-      this.builtFormBaseUrl,
-      geometry,
-      BUILT_FORM_OUT_FIELDS,
-    );
+    const primaryBodyReq = this.queryBody(geometry, PRIMARY_OUT_FIELDS);
+    const builtFormBodyReq = this.queryBody(geometry, BUILT_FORM_OUT_FIELDS);
 
     // Districts and overlays are all spatial queries; run them concurrently.
-    // resolveOverlays never throws (it degrades to an Unresolved gap), so a
-    // flaky overlay sublayer cannot fail the district resolution.
+    // Each posts its geometry in the request body (never the URL), so a detailed
+    // parcel boundary cannot overflow the URL limit. resolveOverlays never
+    // throws (it degrades to an Unresolved gap), so a flaky overlay sublayer
+    // cannot fail the district resolution.
     const [primaryBody, builtFormBody, overlays] = await Promise.all([
-      this.fetchJson(primaryUrl) as Promise<ZoningQueryResponse>,
-      this.fetchJson(builtFormUrl) as Promise<BuiltFormQueryResponse>,
+      this.fetchJson(this.baseUrl, primaryBodyReq) as Promise<ZoningQueryResponse>,
+      this.fetchJson(
+        this.builtFormBaseUrl,
+        builtFormBodyReq,
+      ) as Promise<BuiltFormQueryResponse>,
       this.resolveOverlays(geometry, retrievalDate),
     ]);
 
     const district = parseZoningDistrict(primaryBody, {
       retrievalDate,
-      locator: primaryUrl,
+      locator: this.baseUrl,
       subject,
     });
     const builtForm = parseBuiltFormDistrict(builtFormBody, {
       retrievalDate,
-      locator: builtFormUrl,
+      locator: this.builtFormBaseUrl,
       subject,
     });
 

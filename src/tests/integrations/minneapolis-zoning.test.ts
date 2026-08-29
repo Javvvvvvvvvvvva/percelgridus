@@ -138,12 +138,16 @@ describe("MinneapolisZoningProvider", () => {
 
   it("queries both layers and resolves the primary district", async () => {
     let primaryUrl = "";
+    let primaryBody = "";
     const provider = new MinneapolisZoningProvider({
-      fetchImpl: async (url) => {
+      fetchImpl: async (url, init) => {
         if (url.includes("Planning_Zoning_Overlay")) {
           return okResponse({ count: 0 });
         }
-        if (url.includes("Planning_Primary_Zoning")) primaryUrl = url;
+        if (url.includes("Planning_Primary_Zoning")) {
+          primaryUrl = url;
+          primaryBody = init?.body ?? "";
+        }
         return okResponse(
           fixture(
             url.includes("Planning_Zoning_Built_Form")
@@ -156,8 +160,10 @@ describe("MinneapolisZoningProvider", () => {
     });
 
     const env = await provider.envelopeFor(identity(), SQUARE);
-    expect(primaryUrl).toContain("geometryType=esriGeometryPolygon");
-    expect(primaryUrl).toContain("esriSpatialRelIntersects");
+    // Geometry is posted in the body; the URL stays the bare endpoint.
+    expect(primaryUrl).not.toContain("geometry");
+    expect(primaryBody).toContain("geometryType=esriGeometryPolygon");
+    expect(primaryBody).toContain("esriSpatialRelIntersects");
     if (!isEvidence(env.zoningDistrict)) {
       throw new Error("expected a resolved district");
     }
@@ -222,10 +228,12 @@ describe("MinneapolisZoningProvider", () => {
 
   it("filters overlay queries to non-null designations (Floodplain background guard)", async () => {
     let overlayUrl = "";
+    let overlayBody = "";
     const provider = new MinneapolisZoningProvider({
-      fetchImpl: async (url) => {
+      fetchImpl: async (url, init) => {
         if (url.includes("Planning_Zoning_Overlay")) {
           overlayUrl = url;
+          overlayBody = init?.body ?? "";
           return okResponse({ count: 0 });
         }
         return okResponse(
@@ -238,8 +246,10 @@ describe("MinneapolisZoningProvider", () => {
       },
     });
     await provider.envelopeFor(identity(), SQUARE);
-    expect(overlayUrl).toContain("returnCountOnly=true");
-    const decoded = decodeURIComponent(overlayUrl).replace(/\+/g, " ");
+    // The count-only query and designation filter travel in the POST body.
+    expect(overlayUrl).toMatch(/FeatureServer\/\d+\/query$/);
+    expect(overlayBody).toContain("returnCountOnly=true");
+    const decoded = decodeURIComponent(overlayBody).replace(/\+/g, " ");
     expect(decoded).toContain("SYMBOL_NAM IS NOT NULL");
   });
 
@@ -275,6 +285,34 @@ describe("MinneapolisZoningProvider", () => {
     expect(env.overlays).toHaveLength(1);
     expect(env.overlays.every(isUnresolved)).toBe(true);
     expect(approvalBlockers(env.overlays).length).toBe(1);
+  });
+
+  it("keeps a many-vertex boundary out of every query URL (avoids HTTP 414/431)", async () => {
+    const ring: number[][] = [];
+    for (let i = 0; i < 600; i++) {
+      ring.push([-93.29 + i * 1e-5, 44.94 + (i % 2) * 1e-5]);
+    }
+    ring.push([-93.29, 44.94]);
+    const urls: string[] = [];
+    const provider = new MinneapolisZoningProvider({
+      fetchImpl: async (url) => {
+        urls.push(url);
+        if (url.includes("Planning_Zoning_Overlay")) return okResponse({ count: 0 });
+        return okResponse(
+          fixture(
+            url.includes("Planning_Zoning_Built_Form")
+              ? "mpls-built-form-i2"
+              : "mpls-zoning-un2",
+          ),
+        );
+      },
+    });
+    await provider.envelopeFor(identity(), [ring]);
+    // Every request URL is a bare endpoint; the ~15KB geometry rode in the body.
+    for (const u of urls) {
+      expect(u).not.toContain("geometry");
+      expect(u.length).toBeLessThan(160);
+    }
   });
 
   it("returns an Unresolved district without geometry, never a fetch", async () => {
