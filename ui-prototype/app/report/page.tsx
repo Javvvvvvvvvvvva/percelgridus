@@ -96,7 +96,7 @@ export default async function ReportPage({
                 </div>
                 <div style={{ display: "flex", gap: 20, fontFamily: "var(--font-mono), monospace", fontSize: 12, lineHeight: 1, color: "var(--ink2)", flexWrap: "wrap" }}>
                   <span>APN {subjectParcel.apn ?? "—"}</span>
-                  <span>Owner: [on record]</span>
+                  <span>Owner: {subjectParcel.owner ?? "[on record]"}</span>
                   {subjectParcel.ward ? <span>{subjectParcel.ward}</span> : null}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -191,6 +191,80 @@ export default async function ReportPage({
                   ]}
                   source="City of Minneapolis §540.910 — machine-parsed"
                 />
+                <FactCard
+                  label="Overlay districts"
+                  value={
+                    sa.overlays.resolved
+                      ? sa.overlays.names.length
+                        ? sa.overlays.names.join(", ")
+                        : "None apply"
+                      : "Unresolved"
+                  }
+                  sub={sa.overlays.names.length ? "Chapter 551 overlay(s) intersect this parcel" : undefined}
+                  badges={
+                    sa.overlays.resolved
+                      ? [{ tone: "blue", label: "OFFICIAL · VERIFIED" }]
+                      : [{ tone: "orange", label: "UNVERIFIED" }]
+                  }
+                  source="City of Minneapolis overlay layer — Ch. 551"
+                />
+                <FactCard
+                  label="Min. parking stalls"
+                  value={sa.parking ? sa.parking.minStalls : "—"}
+                  sub="Citywide parking-minimum elimination (2021)"
+                  badges={[
+                    { tone: "blue", label: "OFFICIAL" },
+                    { tone: "orange", label: "UNVERIFIED" },
+                  ]}
+                  source={sa.parking?.source ? `City of Minneapolis ${sa.parking.source}` : "City of Minneapolis Chapter 541"}
+                />
+
+                {sa.assessment && (
+                  <>
+                    <FactCard
+                      label="Year built"
+                      value={sa.assessment.yearBuilt ?? "—"}
+                      badges={[{ tone: "blue", label: "OFFICIAL · VERIFIED" }]}
+                      source="Hennepin County Assessor — BUILD_YR"
+                    />
+                    <FactCard
+                      label="Assessor taxable value"
+                      value={sa.assessment.assessedValue ?? "—"}
+                      sub="Total taxable market value — current assessment"
+                      badges={[{ tone: "blue", label: "OFFICIAL · VERIFIED" }]}
+                      source="Hennepin County Assessor — current"
+                    />
+                    <FactCard
+                      label="Annual property tax"
+                      value={sa.assessment.annualPropertyTax ?? "—"}
+                      sub="Actual amount billed — current assessment"
+                      badges={[{ tone: "blue", label: "OFFICIAL · VERIFIED" }]}
+                      source="Hennepin County Assessor — current"
+                    />
+                    <FactCard
+                      label="Effective tax rate"
+                      value={
+                        sa.assessment.effectiveTaxRatePct != null ? (
+                          <>{sa.assessment.effectiveTaxRatePct}<span style={{ fontSize: 14, color: "var(--ink2)" }}>%</span></>
+                        ) : (
+                          "—"
+                        )
+                      }
+                      sub="Current assessment only — a redevelopment is reassessed"
+                      badges={[{ tone: "gray", label: "ALGORITHM · DERIVED" }]}
+                      source="actual tax ÷ assessor taxable value"
+                    />
+                    {sa.assessment.lastSalePrice && (
+                      <FactCard
+                        label="Last recorded sale"
+                        value={sa.assessment.lastSalePrice}
+                        sub={`${sa.assessment.lastSaleDate ?? ""}${sa.assessment.lastSaleCaveat ? " · " + sa.assessment.lastSaleCaveat : ""}`}
+                        badges={[{ tone: "blue", label: "OFFICIAL" }]}
+                        source="Hennepin County Assessor — sale record"
+                      />
+                    )}
+                  </>
+                )}
 
                 <div
                   style={{

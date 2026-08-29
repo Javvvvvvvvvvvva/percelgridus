@@ -23,6 +23,7 @@ import {
 import {
   computeProForma,
   buildSiteMassingProgram,
+  buildParcelTaxAssessment,
 } from "../../src/lib/finance/index.js";
 import { isEvidence, isUnresolved } from "../../src/lib/jurisdiction/index.js";
 import type {
@@ -34,12 +35,39 @@ import { Area, Money } from "../../src/lib/units/index.js";
 export interface ParcelSummary {
   readonly address: string;
   readonly apn: string | null;
+  readonly owner: string | null;
   readonly lotAreaSf: number | null;
   readonly zoningDistrict: string | null;
   readonly zoningName: string | null;
   readonly maxHeightFt: number | null;
   readonly maxFar: number | null;
   readonly maxLotCoveragePct: number | null;
+}
+
+/** Hennepin assessor facts + the derived current effective tax rate. */
+export interface AssessmentSummary {
+  readonly yearBuilt: number | null;
+  /** Formatted USD, e.g. "$3,658,000.00". */
+  readonly assessedValue: string | null;
+  readonly annualPropertyTax: string | null;
+  /** Current effective rate as a percent, e.g. 1.89. Current assessment only. */
+  readonly effectiveTaxRatePct: number | null;
+  readonly lastSalePrice: string | null;
+  readonly lastSaleDate: string | null;
+  /** The assessor sale-code caveat (e.g. multi-parcel sale), when present. */
+  readonly lastSaleCaveat: string | null;
+}
+
+/** Resolved Chapter 551 overlay districts. `resolved` is false only if the query failed. */
+export interface OverlaysSummary {
+  readonly names: readonly string[];
+  readonly resolved: boolean;
+}
+
+/** Minimum off-street parking stalls (Ch. 541 citywide zero). */
+export interface ParkingSummary {
+  readonly minStalls: number;
+  readonly source: string | null;
 }
 
 export interface EnvelopeSummary {
@@ -81,6 +109,9 @@ export interface SiteAnalysis {
   readonly openItemCount: number;
   readonly flood: FloodSummary | null;
   readonly terrain: TerrainSummaryUi | null;
+  readonly assessment: AssessmentSummary | null;
+  readonly overlays: OverlaysSummary;
+  readonly parking: ParkingSummary | null;
 }
 
 /** Assumptions the user drives; the library treats these as user-input evidence. */
@@ -180,6 +211,8 @@ export async function getSiteAnalysis(
   const parcelSummary: ParcelSummary = {
     address: isEvidence(dd.address) ? dd.address.value.normalized : address,
     apn: parcel ? (parcel.identity.apns[0]?.value ?? null) : null,
+    owner:
+      parcel && isEvidence(parcel.ownerName) ? parcel.ownerName.value : null,
     lotAreaSf: num(lotArea, (ar) => Math.round(ar.toSquareFeet())),
     zoningDistrict: district ? district.value : null,
     zoningName: district?.note ?? null,
@@ -222,6 +255,51 @@ export async function getSiteAnalysis(
         }
       : null;
 
+  // Assessor facts + the derived current effective tax rate (finance/parcel-tax).
+  let assessment: AssessmentSummary | null = null;
+  if (parcel !== undefined) {
+    const tax = buildParcelTaxAssessment(parcel);
+    const sale =
+      parcel.lastSale && isEvidence(parcel.lastSale)
+        ? parcel.lastSale.value
+        : undefined;
+    assessment = {
+      yearBuilt:
+        parcel.yearBuilt && isEvidence(parcel.yearBuilt)
+          ? parcel.yearBuilt.value
+          : null,
+      assessedValue: isEvidence(tax.assessedValue)
+        ? tax.assessedValue.value.format()
+        : null,
+      annualPropertyTax: isEvidence(tax.annualPropertyTax)
+        ? tax.annualPropertyTax.value.format()
+        : null,
+      effectiveTaxRatePct: isEvidence(tax.effectiveTaxRatePct)
+        ? Math.round(tax.effectiveTaxRatePct.value * 10000) / 100
+        : null,
+      lastSalePrice: sale ? sale.price.format() : null,
+      lastSaleDate: sale ? sale.date : null,
+      lastSaleCaveat: sale?.saleCode ?? null,
+    };
+  }
+
+  // Chapter 551 overlays: resolved facts (possibly empty = "none apply"); the
+  // field is only "unresolved" if the overlay query itself failed.
+  const overlayItems = zoning ? zoning.overlays : [];
+  const overlays: OverlaysSummary = {
+    names: overlayItems.filter(isEvidence).map((o) => o.value),
+    resolved: overlayItems.every(isEvidence),
+  };
+
+  // Minimum off-street parking — Ch. 541 citywide zero.
+  const parking: ParkingSummary | null =
+    zoning && isEvidence(zoning.minParkingStalls)
+      ? {
+          minStalls: zoning.minParkingStalls.value,
+          source: zoning.minParkingStalls.citation?.ordinanceSection ?? null,
+        }
+      : null;
+
   return {
     resolved: Boolean(parcelResolved),
     parcel: parcelSummary,
@@ -229,6 +307,9 @@ export async function getSiteAnalysis(
     envelope,
     flood,
     terrain,
+    assessment,
+    overlays,
+    parking,
     proFormaSeed: {
       buildableGsf,
       units,
