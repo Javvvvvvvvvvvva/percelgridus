@@ -169,7 +169,10 @@ export async function getSiteAnalysis(
   opts: { useClass?: string } = {},
 ): Promise<SiteAnalysis> {
   const a = DEFAULT_ASSUMPTIONS;
-  const profile = createMinneapolisProfile();
+  // USGS EPQS (3DEP terrain) can be slow; give it a generous server-side
+  // timeout so a slow — but eventually successful — response doesn't abort the
+  // whole request the way the 10s provider default would under load.
+  const profile = createMinneapolisProfile({ usgs: { timeoutMs: 45_000 } });
   const repository = new InMemorySiteRepository();
   const dd = await intakeSite(
     address,

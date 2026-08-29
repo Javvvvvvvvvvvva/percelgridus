@@ -11,6 +11,12 @@ export default async function ProFormaPage({
   const { address } = await searchParams;
   const sa = await getSiteAnalysis(address);
   return (
-    <ProFormaClient parcel={sa.parcel} envelope={sa.envelope} seed={sa.proFormaSeed} />
+    <ProFormaClient
+      parcel={sa.parcel}
+      envelope={sa.envelope}
+      seed={sa.proFormaSeed}
+      assessment={sa.assessment}
+      openItemCount={sa.openItemCount}
+    />
   );
 }

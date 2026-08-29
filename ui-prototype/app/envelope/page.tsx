@@ -114,7 +114,7 @@ export default async function EnvelopePage({
 
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ background: "var(--gray-bg)", border: "1px solid var(--line)", borderRadius: 8, padding: "14px 16px", fontFamily: "var(--font-sans), sans-serif", fontSize: 12, lineHeight: 1.5, color: "var(--ink2)" }}>
-                Vacant-or-redevelop reading: <strong style={{ color: "var(--ink)", fontWeight: 600 }}>this is the most you could build by right</strong> if the parcel were cleared today, before setbacks and parking are resolved.
+                Vacant-or-redevelop reading: <strong style={{ color: "var(--ink)", fontWeight: 600 }}>this is the most you could build by right</strong> if the parcel were cleared today, before setbacks are resolved.
               </div>
 
               <div className="pg-2col">
@@ -155,6 +155,37 @@ export default async function EnvelopePage({
                   badges={[{ tone: "purple", label: "USER ASSUMPTION" }]}
                   source={`@ ${envelope.gsfPerUnit.toLocaleString("en-US")} GSF/unit · conflicts with 3-family use cap`}
                 />
+                <EnvelopeStat
+                  label="Min. parking"
+                  value={sa.parking ? String(sa.parking.minStalls) : "—"}
+                  unit="stalls"
+                  badges={[
+                    { tone: "blue", label: "OFFICIAL" },
+                    { tone: "orange", label: "UNVERIFIED" },
+                  ]}
+                  source="No minimum citywide (Ch. 541) — does not shrink the envelope"
+                />
+                <EnvelopeStat
+                  label="Overlay districts"
+                  value={
+                    sa.overlays.resolved
+                      ? sa.overlays.names.length
+                        ? String(sa.overlays.names.length)
+                        : "0"
+                      : "—"
+                  }
+                  unit={sa.overlays.names.length === 1 ? "overlay" : "overlays"}
+                  badges={
+                    sa.overlays.resolved
+                      ? [{ tone: "blue", label: "OFFICIAL" }]
+                      : [{ tone: "orange", label: "UNVERIFIED" }]
+                  }
+                  source={
+                    sa.overlays.names.length
+                      ? `${sa.overlays.names.join(", ")} — may add constraints`
+                      : "None intersect this parcel (Ch. 551)"
+                  }
+                />
               </div>
 
               <div style={{ background: "var(--orange-bg)", border: "1px solid var(--orange)", borderRadius: 8, padding: "14px 16px", display: "flex", gap: 12, alignItems: "flex-start" }}>
@@ -166,7 +197,7 @@ export default async function EnvelopePage({
                     Envelope is provisional
                   </div>
                   <div style={{ fontFamily: "var(--font-sans), sans-serif", fontSize: 12, lineHeight: 1.5, color: "var(--ink2)" }}>
-                    Setbacks unresolved and parking unevaluated — the real footprint can only shrink from here, never grow.
+                    Setbacks are still unresolved — the real footprint can only shrink from here, never grow. Parking adds no minimum (Ch. 541){sa.overlays.resolved && sa.overlays.names.length === 0 ? " and no overlay district applies" : ""}.
                   </div>
                 </div>
               </div>

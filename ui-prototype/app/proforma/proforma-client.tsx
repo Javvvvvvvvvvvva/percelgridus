@@ -4,16 +4,25 @@ import { useMemo, useState } from "react";
 import { Header } from "@/components/header";
 import { Badge } from "@/components/badge";
 import { computeProForma, money } from "@/lib/financials";
-import type { ParcelSummary, EnvelopeSummary, ProFormaSeed } from "@/lib/parcelgrid";
+import type {
+  ParcelSummary,
+  EnvelopeSummary,
+  ProFormaSeed,
+  AssessmentSummary,
+} from "@/lib/parcelgrid";
 
 export default function ProFormaClient({
   parcel,
   envelope,
   seed,
+  assessment,
+  openItemCount,
 }: {
   parcel: ParcelSummary;
   envelope: EnvelopeSummary;
   seed: ProFormaSeed;
+  assessment: AssessmentSummary | null;
+  openItemCount: number;
 }) {
   const [rent, setRent] = useState(seed.rentPerUnitMonth);
   const [psf, setPsf] = useState(seed.hardCostPerGsf);
@@ -139,6 +148,33 @@ export default function ProFormaClient({
                 </div>
               </div>
 
+              {assessment && (assessment.assessedValue || assessment.lastSalePrice) && (
+                <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 8, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 600, fontSize: 10, lineHeight: 1, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink3)" }}>
+                      Market reference — not inputs
+                    </div>
+                    <Badge tone="blue">OFFICIAL</Badge>
+                  </div>
+                  {assessment.assessedValue && (
+                    <RefRow label="Assessor taxable value" value={assessment.assessedValue} />
+                  )}
+                  {assessment.annualPropertyTax && (
+                    <RefRow label="Actual annual property tax" value={assessment.annualPropertyTax} />
+                  )}
+                  {assessment.lastSalePrice && (
+                    <RefRow
+                      label={`Last sale${assessment.lastSaleDate ? ` · ${assessment.lastSaleDate}` : ""}`}
+                      value={assessment.lastSalePrice}
+                      caveat={assessment.lastSaleCaveat}
+                    />
+                  )}
+                  <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.5, color: "var(--ink3)" }}>
+                    Hennepin County Assessor — current assessment. Shown to sanity-check the acquisition assumption above; these do not drive the math.
+                  </div>
+                </div>
+              )}
+
               <div style={{ background: "var(--panel2)", border: "1px dashed var(--line2)", borderRadius: 8, padding: "14px 16px", fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.6, color: "var(--ink3)" }}>
                 Moving a slider changes only USER ASSUMPTION values. Official and unverified inputs stay locked to their source snapshot.
               </div>
@@ -146,7 +182,7 @@ export default function ProFormaClient({
           </div>
 
           <div style={{ padding: "16px 24px", borderTop: "1px solid var(--line)", background: "var(--panel2)", fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.6, color: "var(--ink3)" }}>
-            PRELIMINARY REFERENCE ONLY — This pro forma inherits 8 unresolved items from the current-condition report. Feasibility cannot be relied upon until setbacks, parking, overlays and discretionary approvals are confirmed by a licensed professional.
+            PRELIMINARY REFERENCE ONLY — This pro forma inherits {openItemCount} unresolved items from the current-condition report. Parking (Ch. 541) and overlay districts (Ch. 551) are now resolved; feasibility still cannot be relied upon until setbacks and discretionary approvals are confirmed by a licensed professional.
           </div>
         </div>
       </div>
@@ -202,6 +238,28 @@ function LineItemRow({
       <div style={{ textAlign: "right" }}>
         <Badge tone={badge.tone}>{badge.label}</Badge>
       </div>
+    </div>
+  );
+}
+
+function RefRow({
+  label,
+  value,
+  caveat,
+}: {
+  label: string;
+  value: string;
+  caveat?: string | null;
+}) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+        <span style={{ fontFamily: "var(--font-sans), sans-serif", fontSize: 12, lineHeight: 1.3, color: "var(--ink2)" }}>{label}</span>
+        <span style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 600, fontSize: 13, lineHeight: 1.3, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{value}</span>
+      </div>
+      {caveat && (
+        <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, lineHeight: 1.4, color: "var(--orange)" }}>⚠ {caveat}</span>
+      )}
     </div>
   );
 }
