@@ -5,3 +5,6 @@ export type {
   DevelopmentProgramAssumptions,
   SiteMassingProgram,
 } from "./pro-forma.js";
+
+export { buildParcelTaxAssessment } from "./parcel-tax.js";
+export type { ParcelTaxAssessment } from "./parcel-tax.js";

@@ -130,6 +130,10 @@ describe("buildDecisionReport", () => {
     expect(byLabel("Last recorded sale")?.value).toContain("$415,000.00");
     // The sale-code caveat rides along as the fact's note.
     expect(byLabel("Last recorded sale")?.note).toContain("MORE THAN ONE PARCEL");
+    // Effective tax rate is derived exactly from value + tax: 6784.52/512000 ≈ 1.33%.
+    expect(byLabel("Effective property tax rate")?.value).toBe(
+      "1.33% (current assessment)",
+    );
     // Assessor facts are machine-parsed and must not add approval blockers.
     const base = buildDecisionReport(dd);
     expect(r.blockers.length).toBe(base.blockers.length);

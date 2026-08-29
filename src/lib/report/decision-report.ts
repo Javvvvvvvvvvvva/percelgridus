@@ -32,6 +32,7 @@ import type {
 } from "../jurisdiction/index.js";
 import { approvalBlockers } from "../jurisdiction/index.js";
 import { Area, Length } from "../units/index.js";
+import { buildParcelTaxAssessment } from "../finance/index.js";
 import type { SiteDueDiligence } from "../intake/index.js";
 
 /** One resolved fact, with the provenance the reader needs to trust it. */
@@ -153,6 +154,13 @@ export function buildDecisionReport(dd: SiteDueDiligence): DecisionReport {
     add("Assessor taxable value", p.assessedValue, (m) => m.format());
     add("Annual property tax", p.annualPropertyTax, (m) => m.format());
     add("Last recorded sale", p.lastSale, (s) => `${s.price.format()} (${s.date})`);
+    // Current effective property-tax rate, derived exactly from the two official
+    // figures above. Scoped to the current assessment (a redevelopment is
+    // reassessed), so it is a fact about current condition, not a forward rate.
+    const tax = buildParcelTaxAssessment(p);
+    add("Effective property tax rate", tax.effectiveTaxRatePct, (r) =>
+      `${(r * 100).toFixed(2)}% (current assessment)`,
+    );
   } else if (dd.parcel !== undefined) {
     add("Parcel", dd.parcel, () => "");
   }
