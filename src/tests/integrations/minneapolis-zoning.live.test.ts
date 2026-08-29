@@ -78,7 +78,20 @@ suite("MinneapolisZoningProvider (live)", () => {
         throw new Error("expected sourced allowed uses");
       }
       expect(env.allowedUses.value).toContain("three-family dwelling");
+
+      // Parking minimum is a sourced citywide zero (Chapter 541).
+      if (!isEvidence(env.minParkingStalls)) {
+        throw new Error("expected a sourced parking rule");
+      }
+      expect(env.minParkingStalls.value).toBe(0);
+
+      // Overlays resolve live from the City overlay layer. This inland UN2
+      // parcel sits in no Chapter 551 overlay district — and, crucially, the
+      // Floodplain background polygon must NOT false-positive it — so the field
+      // resolves to an empty, non-blocking list rather than a gap.
+      expect(env.overlays.every(isEvidence)).toBe(true);
+      expect(env.overlays).toHaveLength(0);
     },
-    20_000,
+    30_000,
   );
 });

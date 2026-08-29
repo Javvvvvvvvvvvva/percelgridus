@@ -10,6 +10,8 @@ import {
   parseBuiltFormDistrict,
   resolveAllowedUses,
   resolveMinParkingStalls,
+  overlaysFromProbes,
+  MINNEAPOLIS_OVERLAY_LAYERS,
   resolveNumericEnvelope,
   primaryCategoryFromDistrict,
   MINNEAPOLIS_BUILT_FORM_STANDARDS,
@@ -118,9 +120,16 @@ describe("MinneapolisZoningProvider", () => {
       normalizedAddress: "300 S 4th St, Minneapolis, MN",
     });
 
-  // Route each of the two queries to its fixture by inspecting the URL.
+  // Route each query to its fixture by inspecting the URL. Overlay sublayer
+  // queries (returnCountOnly) answer 0 unless their layer id is in `overlayHits`.
   const routedFetch =
-    (primary: string, builtForm: string) => async (url: string) => {
+    (primary: string, builtForm: string, overlayHits: readonly number[] = []) =>
+    async (url: string) => {
+      if (url.includes("Planning_Zoning_Overlay")) {
+        const m = /FeatureServer\/(\d+)\/query/.exec(url);
+        const layerId = m ? Number(m[1]) : -1;
+        return okResponse({ count: overlayHits.includes(layerId) ? 1 : 0 });
+      }
       const name = url.includes("Planning_Zoning_Built_Form")
         ? builtForm
         : primary;
@@ -131,7 +140,10 @@ describe("MinneapolisZoningProvider", () => {
     let primaryUrl = "";
     const provider = new MinneapolisZoningProvider({
       fetchImpl: async (url) => {
-        if (!url.includes("Planning_Zoning_Built_Form")) primaryUrl = url;
+        if (url.includes("Planning_Zoning_Overlay")) {
+          return okResponse({ count: 0 });
+        }
+        if (url.includes("Planning_Primary_Zoning")) primaryUrl = url;
         return okResponse(
           fixture(
             url.includes("Planning_Zoning_Built_Form")
@@ -191,6 +203,78 @@ describe("MinneapolisZoningProvider", () => {
     if (!isEvidence(env.maxFar)) throw new Error("expected a FAR rule");
     expect(env.maxFar.value).toBe(0.5);
     expect(env.maxFar.verification).toBe("unverified");
+  });
+
+  it("resolves intersecting overlay districts as official facts (Ch. 551)", async () => {
+    // Floodplain (10) and Shoreland (9) — a riverfront parcel.
+    const provider = new MinneapolisZoningProvider({
+      fetchImpl: routedFetch("mpls-zoning-un2", "mpls-built-form-i2", [9, 10]),
+      now: () => new Date("2026-08-26T00:00:00Z"),
+    });
+    const env = await provider.envelopeFor(identity(), SQUARE);
+    expect(env.overlays.every(isEvidence)).toBe(true);
+    const names = env.overlays.flatMap((o) => (isEvidence(o) ? [o.value] : []));
+    expect(names).toContain("Shoreland Overlay District");
+    expect(names).toContain("Floodplain Overlay District");
+    // Overlay presence is a machine-parsed fact, so it does NOT block approval.
+    expect(approvalBlockers(env.overlays).length).toBe(0);
+  });
+
+  it("filters overlay queries to non-null designations (Floodplain background guard)", async () => {
+    let overlayUrl = "";
+    const provider = new MinneapolisZoningProvider({
+      fetchImpl: async (url) => {
+        if (url.includes("Planning_Zoning_Overlay")) {
+          overlayUrl = url;
+          return okResponse({ count: 0 });
+        }
+        return okResponse(
+          fixture(
+            url.includes("Planning_Zoning_Built_Form")
+              ? "mpls-built-form-i2"
+              : "mpls-zoning-un2",
+          ),
+        );
+      },
+    });
+    await provider.envelopeFor(identity(), SQUARE);
+    expect(overlayUrl).toContain("returnCountOnly=true");
+    const decoded = decodeURIComponent(overlayUrl).replace(/\+/g, " ");
+    expect(decoded).toContain("SYMBOL_NAM IS NOT NULL");
+  });
+
+  it("resolves overlays to an empty, non-blocking list when none apply", async () => {
+    const provider = new MinneapolisZoningProvider({
+      fetchImpl: routedFetch("mpls-zoning-un2", "mpls-built-form-i2", []),
+      now: () => new Date("2026-08-26T00:00:00Z"),
+    });
+    const env = await provider.envelopeFor(identity(), SQUARE);
+    expect(env.overlays).toHaveLength(0);
+    expect(approvalBlockers(env.overlays).length).toBe(0);
+  });
+
+  it("degrades overlays to a single Unresolved gap if a sublayer query fails", async () => {
+    const provider = new MinneapolisZoningProvider({
+      fetchImpl: async (url) => {
+        if (url.includes("Planning_Zoning_Overlay")) {
+          return { ok: false, status: 500, json: async () => ({}) };
+        }
+        return okResponse(
+          fixture(
+            url.includes("Planning_Zoning_Built_Form")
+              ? "mpls-built-form-i2"
+              : "mpls-zoning-un2",
+          ),
+        );
+      },
+      now: () => new Date("2026-08-26T00:00:00Z"),
+    });
+    const env = await provider.envelopeFor(identity(), SQUARE);
+    // District still resolves; overlays fall back to one approval-blocking gap.
+    expect(isEvidence(env.zoningDistrict)).toBe(true);
+    expect(env.overlays).toHaveLength(1);
+    expect(env.overlays.every(isUnresolved)).toBe(true);
+    expect(approvalBlockers(env.overlays).length).toBe(1);
   });
 
   it("returns an Unresolved district without geometry, never a fetch", async () => {
@@ -428,6 +512,63 @@ describe("resolveMinParkingStalls", () => {
   it("is an approval blocker until confirmed (unverified), like every parsed rule", () => {
     const r = resolveMinParkingStalls(ctx);
     expect(approvalBlockers([r]).length).toBe(1);
+  });
+});
+
+describe("overlaysFromProbes", () => {
+  const SRC = {
+    label: "City of Minneapolis — Planning Zoning Overlay",
+    locator: "https://example/overlay",
+    retrievalDate: "2026-08-26",
+  };
+
+  it("emits one official/machine-parsed fact per intersecting overlay", () => {
+    const overlays = overlaysFromProbes(
+      [
+        { name: "Shoreland Overlay District", response: { count: 1 } },
+        { name: "Floodplain Overlay District", response: { count: 2 } },
+        { name: "Airport Overlay District", response: { count: 0 } },
+      ],
+      SRC,
+    );
+    expect(overlays).toHaveLength(2);
+    for (const o of overlays) {
+      if (!isEvidence(o)) throw new Error("expected evidence");
+      expect(o.provenance).toBe("official");
+      expect(o.verification).toBe("machine-parsed");
+    }
+    // Machine-parsed spatial facts do not block approval.
+    expect(approvalBlockers(overlays).length).toBe(0);
+  });
+
+  it("resolves to an empty, non-blocking list when nothing intersects", () => {
+    const overlays = overlaysFromProbes(
+      MINNEAPOLIS_OVERLAY_LAYERS.map((l) => ({
+        name: l.name,
+        response: { count: 0 },
+      })),
+      SRC,
+    );
+    expect(overlays).toHaveLength(0);
+  });
+
+  it("returns a single approval-blocking gap when any probe errors", () => {
+    const overlays = overlaysFromProbes(
+      [
+        { name: "Shoreland Overlay District", response: { count: 1 } },
+        { name: "Floodplain Overlay District", response: { error: { message: "boom" } } },
+      ],
+      SRC,
+    );
+    expect(overlays).toHaveLength(1);
+    expect(overlays.every(isUnresolved)).toBe(true);
+    expect(approvalBlockers(overlays).length).toBe(1);
+  });
+
+  it("excludes Split Zoning — not a Chapter 551 overlay district", () => {
+    const names = MINNEAPOLIS_OVERLAY_LAYERS.map((l) => l.name);
+    expect(names.some((n) => /Split Zoning/i.test(n))).toBe(false);
+    expect(names).toContain("Mississippi River Critical Area Overlay District");
   });
 });
 

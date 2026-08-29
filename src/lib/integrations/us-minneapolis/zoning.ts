@@ -12,7 +12,9 @@
  * from the Chapter 540 rule table (built-form-rules) — currently empty because
  * the ordinance text is not reachable from this environment, so those fields
  * surface as Unresolved. Allowed uses (§ 545.100) and the citywide-zero parking
- * minimum (Chapter 541) are sourced; overlays and discretionary approvals stay
+ * minimum (Chapter 541) are sourced; overlay districts (Chapter 551) are
+ * resolved from the City overlay layer as spatial facts (a clean set of misses
+ * resolves the field to "no overlays apply"); discretionary approvals stay
  * Unresolved. A sourced rule, once added, flows through
  * as an unverified (approval-blocking) preliminary reference — never a legal
  * maximum (README-US §2 "no safe nationwide hard-coded zoning engine"; §4).
@@ -24,7 +26,7 @@
 
 import { unresolved } from "../../jurisdiction/evidence.js";
 import { isEvidence } from "../../jurisdiction/evidence.js";
-import type { RuleCitation } from "../../jurisdiction/evidence.js";
+import type { RuleCitation, SourceRef } from "../../jurisdiction/evidence.js";
 import type { ParcelIdentity } from "../../jurisdiction/identifiers.js";
 import type {
   ByRightEnvelope,
@@ -45,6 +47,16 @@ import { parseBuiltFormDistrict } from "./parse-built-form.js";
 import { buildEnvelope, parseZoningDistrict } from "./parse-zoning.js";
 import { resolveAllowedUses } from "./use-rules.js";
 import { resolveMinParkingStalls } from "./parking-rules.js";
+import {
+  MINNEAPOLIS_OVERLAY_LAYERS,
+  overlaysFromProbes,
+  overlaysUnavailable,
+} from "./overlays.js";
+import type {
+  OverlayCountResponse,
+  OverlayLayer,
+  OverlayProbe,
+} from "./overlays.js";
 import type { EvidenceOrUnresolved } from "../../jurisdiction/evidence.js";
 import type { ZoningQueryResponse } from "./zoning-response.js";
 import {
@@ -64,6 +76,8 @@ export interface MinneapolisZoningConfig {
   readonly baseUrl?: string;
   /** Overridable built form layer endpoint. */
   readonly builtFormBaseUrl?: string;
+  /** Overridable overlay FeatureServer (its sublayers are queried per overlay). */
+  readonly overlayBaseUrl?: string;
   readonly fetchImpl?: FetchLike;
   readonly now?: () => Date;
   readonly timeoutMs?: number;
@@ -75,6 +89,10 @@ const DEFAULT_BASE_URL =
 const DEFAULT_BUILT_FORM_URL =
   "https://services.arcgis.com/afSMGVsC7QlRK1kZ/arcgis/rest/services/" +
   "Planning_Zoning_Built_Form/FeatureServer/0/query";
+/** The overlay FeatureServer root; each Chapter 551 sublayer is queried under it. */
+const DEFAULT_OVERLAY_BASE_URL =
+  "https://services.arcgis.com/afSMGVsC7QlRK1kZ/arcgis/rest/services/" +
+  "Planning_Zoning_Overlay/FeatureServer";
 
 const PRIMARY_OUT_FIELDS = "Land_Use,Land_Use_Code";
 const BUILT_FORM_OUT_FIELDS = "Built_Form,Abbrv";
@@ -95,6 +113,7 @@ export class MinneapolisZoningProvider implements ZoningEvidenceProvider {
 
   private readonly baseUrl: string;
   private readonly builtFormBaseUrl: string;
+  private readonly overlayBaseUrl: string;
   private readonly fetchImpl: FetchLike;
   private readonly now: () => Date;
   private readonly timeoutMs: number;
@@ -102,6 +121,7 @@ export class MinneapolisZoningProvider implements ZoningEvidenceProvider {
   constructor(config: MinneapolisZoningConfig = {}) {
     this.baseUrl = config.baseUrl ?? DEFAULT_BASE_URL;
     this.builtFormBaseUrl = config.builtFormBaseUrl ?? DEFAULT_BUILT_FORM_URL;
+    this.overlayBaseUrl = config.overlayBaseUrl ?? DEFAULT_OVERLAY_BASE_URL;
     const injected = config.fetchImpl;
     this.fetchImpl =
       injected ??
@@ -130,6 +150,73 @@ export class MinneapolisZoningProvider implements ZoningEvidenceProvider {
       f: "json",
     });
     return `${baseUrl}?${params.toString()}`;
+  }
+
+  /**
+   * Build a count-only polygon-intersection query for one overlay sublayer.
+   * Presence (count > 0) is all the overlay resolution needs; the overlay's
+   * name comes from the transcribed sublayer set, so no attributes are fetched.
+   *
+   * The `SYMBOL_NAM IS NOT NULL` filter is essential, not cosmetic: the
+   * Floodplain sublayer carries FIRM-panel BACKGROUND polygons (the Zone X
+   * "minimal hazard" coverage that blankets most of the city) as features with
+   * a null designation, so a bare intersects-count would false-positive nearly
+   * every parcel into a floodplain overlay. Requiring a non-null designation
+   * name keeps only genuine overlay features; the clean sublayers all populate
+   * SYMBOL_NAM, so the filter is harmless there.
+   */
+  private buildOverlayCountUrl(
+    layerId: number,
+    geometry: PolygonCoordinates,
+  ): string {
+    const esriPolygon = JSON.stringify({
+      rings: geometry,
+      spatialReference: { wkid: 4326 },
+    });
+    const params = new URLSearchParams({
+      geometry: esriPolygon,
+      geometryType: "esriGeometryPolygon",
+      inSR: "4326",
+      spatialRel: "esriSpatialRelIntersects",
+      where: "SYMBOL_NAM IS NOT NULL",
+      returnCountOnly: "true",
+      f: "json",
+    });
+    return `${this.overlayBaseUrl}/${layerId}/query?${params.toString()}`;
+  }
+
+  /**
+   * Probe every Chapter 551 overlay sublayer for intersection with the parcel.
+   * Returns one official/machine-parsed fact per overlay that applies (possibly
+   * an empty, non-blocking list — "no overlay districts apply"). Degrades to a
+   * single Unresolved gap if any sublayer query fails, so the absence of an
+   * overlay is never asserted without having checked.
+   */
+  private async resolveOverlays(
+    geometry: PolygonCoordinates,
+    retrievalDate: string,
+  ): Promise<readonly EvidenceOrUnresolved<string>[]> {
+    const source: SourceRef = {
+      label: "City of Minneapolis — Planning Zoning Overlay",
+      locator: this.overlayBaseUrl,
+      retrievalDate,
+    };
+    try {
+      const probes = await Promise.all(
+        MINNEAPOLIS_OVERLAY_LAYERS.map(
+          async (layer: OverlayLayer): Promise<OverlayProbe> => {
+            const url = this.buildOverlayCountUrl(layer.layerId, geometry);
+            const response = (await this.fetchJson(url)) as OverlayCountResponse;
+            return { name: layer.name, response };
+          },
+        ),
+      );
+      return overlaysFromProbes(probes, source);
+    } catch (cause) {
+      return overlaysUnavailable(
+        cause instanceof Error ? cause.message : "overlay query failed",
+      );
+    }
   }
 
   private async fetchJson(url: string): Promise<unknown> {
@@ -195,9 +282,13 @@ export class MinneapolisZoningProvider implements ZoningEvidenceProvider {
       BUILT_FORM_OUT_FIELDS,
     );
 
-    const [primaryBody, builtFormBody] = await Promise.all([
+    // Districts and overlays are all spatial queries; run them concurrently.
+    // resolveOverlays never throws (it degrades to an Unresolved gap), so a
+    // flaky overlay sublayer cannot fail the district resolution.
+    const [primaryBody, builtFormBody, overlays] = await Promise.all([
       this.fetchJson(primaryUrl) as Promise<ZoningQueryResponse>,
       this.fetchJson(builtFormUrl) as Promise<BuiltFormQueryResponse>,
+      this.resolveOverlays(geometry, retrievalDate),
     ]);
 
     const district = parseZoningDistrict(primaryBody, {
@@ -251,6 +342,7 @@ export class MinneapolisZoningProvider implements ZoningEvidenceProvider {
     return buildEnvelope(district, numeric, {
       ...(allowedUses !== undefined ? { allowedUses } : {}),
       minParkingStalls,
+      overlays,
     });
   }
 

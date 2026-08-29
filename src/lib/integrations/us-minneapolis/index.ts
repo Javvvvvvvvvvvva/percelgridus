@@ -30,6 +30,19 @@ export type { AllowedUsesContext } from "./use-rules.js";
 export { resolveMinParkingStalls } from "./parking-rules.js";
 export type { MinParkingContext } from "./parking-rules.js";
 
+export {
+  MINNEAPOLIS_OVERLAY_LAYERS,
+  OVERLAY_SECTION,
+  overlaysFromProbes,
+  overlaysWithoutGeometry,
+  overlaysUnavailable,
+} from "./overlays.js";
+export type {
+  OverlayLayer,
+  OverlayCountResponse,
+  OverlayProbe,
+} from "./overlays.js";
+
 export type { ResolvedEnvelopeFields } from "./parse-zoning.js";
 
 export { parseBuiltFormDistrict } from "./parse-built-form.js";

@@ -97,13 +97,14 @@ export function parseZoningDistrict(
 export interface ResolvedEnvelopeFields {
   readonly allowedUses?: EvidenceOrUnresolved<readonly string[]>;
   readonly minParkingStalls?: EvidenceOrUnresolved<number>;
+  readonly overlays?: readonly EvidenceOrUnresolved<string>[];
 }
 
 /**
  * Assemble a full by-right envelope from a resolved (or unresolved) primary
  * district and, optionally, the numeric standards the built form district
  * governs (height, FAR, lot coverage, setbacks — Chapter 540) plus any other
- * sourced fields (allowed uses, parking). Fields with no source — overlays,
+ * sourced fields (allowed uses, parking, overlays). Fields with no source —
  * discretionary approvals, and any standard not passed in — stay Unresolved.
  */
 export function buildEnvelope(
@@ -121,7 +122,7 @@ export function buildEnvelope(
     maxHeight: numeric?.maxHeight ?? gaps.maxHeight,
     minSetbacks: numeric?.minSetbacks ?? gaps.minSetbacks,
     minParkingStalls: resolved.minParkingStalls ?? gaps.minParkingStalls,
-    overlays: gaps.overlays,
+    overlays: resolved.overlays ?? gaps.overlays,
     discretionaryApprovals: gaps.discretionaryApprovals,
   };
 }
