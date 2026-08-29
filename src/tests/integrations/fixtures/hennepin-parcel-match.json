@@ -87,7 +87,13 @@
         "ZIP_CD": "55408",
         "PARCEL_AREA": 4346.61290186,
         "LAT": 44.942782,
-        "LON": -93.2898
+        "LON": -93.2898,
+        "BUILD_YR": "1912",
+        "SALE_DATE": "202104",
+        "SALE_PRICE": 415000,
+        "SALE_CODE_NAME": "SALE INCLUDES MORE THAN ONE PARCEL",
+        "TAXABLE_VAL_TOT": 512000,
+        "TAX_TOT": 6784.52
       },
       "geometry": {
         "rings": [

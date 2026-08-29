@@ -45,6 +45,19 @@ suite("HennepinParcelProvider (live)", () => {
       if (isEvidence(record.lotArea)) {
         expect(record.lotArea.value.toSquareFeet()).toBeGreaterThan(0);
       }
+      // Assessor facts resolve live when the parcel carries them. This known
+      // parcel has an assessed value and an annual tax on record; assert their
+      // shape without pinning volatile dollar amounts.
+      if (record.assessedValue !== undefined && isEvidence(record.assessedValue)) {
+        expect(record.assessedValue.value.toNumber()).toBeGreaterThan(0);
+        expect(record.assessedValue.provenance).toBe("official");
+      }
+      if (
+        record.annualPropertyTax !== undefined &&
+        isEvidence(record.annualPropertyTax)
+      ) {
+        expect(record.annualPropertyTax.value.toNumber()).toBeGreaterThan(0);
+      }
     },
     20_000,
   );

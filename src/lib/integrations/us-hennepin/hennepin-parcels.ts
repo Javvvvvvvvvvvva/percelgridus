@@ -60,7 +60,8 @@ const DEFAULT_BASE_URL =
 
 /** The attributes the parser reads; requested explicitly to keep payloads small. */
 const OUT_FIELDS =
-  "PID,PID_TEXT,OWNER_NM,HOUSE_NO,STREET_NM,MUNIC_NM,ZIP_CD,PARCEL_AREA,LAT,LON";
+  "PID,PID_TEXT,OWNER_NM,HOUSE_NO,STREET_NM,MUNIC_NM,ZIP_CD,PARCEL_AREA,LAT,LON," +
+  "BUILD_YR,SALE_DATE,SALE_PRICE,SALE_CODE_NAME,TAXABLE_VAL_TOT,TAX_TOT";
 
 /** Thrown on transport/HTTP failures (distinct from a "no match" Unresolved). */
 export class HennepinParcelError extends Error {

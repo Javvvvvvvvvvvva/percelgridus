@@ -70,6 +70,49 @@ describe("parseParcelResponse", () => {
 
     // Source locator is the query URL, with a retrieval date.
     expect(record.geometry.source?.retrievalDate).toBe("2026-08-26");
+
+    // Assessor facts — official, machine-parsed, and NON-blocking (enrichment).
+    if (!isEvidence(record.yearBuilt!)) throw new Error("expected year built");
+    expect(record.yearBuilt!.value).toBe(1912);
+    if (!isEvidence(record.assessedValue!)) throw new Error("expected value");
+    expect(record.assessedValue!.value.format()).toBe("$512,000.00");
+    if (!isEvidence(record.annualPropertyTax!)) throw new Error("expected tax");
+    expect(record.annualPropertyTax!.value.format()).toBe("$6,784.52");
+
+    // Last sale carries its sale-code caveat on the value AND as a note, so a
+    // multi-parcel sale is never read as this parcel's clean price.
+    if (!isEvidence(record.lastSale!)) throw new Error("expected last sale");
+    expect(record.lastSale!.value.date).toBe("2021-04");
+    expect(record.lastSale!.value.price.format()).toBe("$415,000.00");
+    expect(record.lastSale!.value.saleCode).toContain("MORE THAN ONE PARCEL");
+    expect(record.lastSale!.note).toContain("MORE THAN ONE PARCEL");
+  });
+
+  it("omits assessor facts rather than asserting zero/blank values", () => {
+    const record = parseParcelResponse(
+      {
+        features: [
+          {
+            attributes: {
+              PID: "1234567890123",
+              PARCEL_AREA: 5000,
+              BUILD_YR: "0000",
+              SALE_PRICE: 0,
+              TAXABLE_VAL_TOT: 0,
+              TAX_TOT: 0,
+            },
+            geometry: { rings: [[[0, 0], [1, 0], [1, 1], [0, 0]]] },
+          },
+        ],
+      },
+      CTX,
+      "point",
+    );
+    if (isUnresolved(record)) throw new Error("expected a parcel record");
+    expect(record.yearBuilt).toBeUndefined();
+    expect(record.assessedValue).toBeUndefined();
+    expect(record.annualPropertyTax).toBeUndefined();
+    expect(record.lastSale).toBeUndefined();
   });
 
   it("returns Unresolved when no parcel matches", () => {

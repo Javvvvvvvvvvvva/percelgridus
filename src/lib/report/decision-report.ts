@@ -148,7 +148,11 @@ export function buildDecisionReport(dd: SiteDueDiligence): DecisionReport {
     const p = dd.parcel;
     add("Owner of record", p.ownerName, (s) => s);
     add("Lot area", p.lotArea, areaSf);
+    add("Year built", p.yearBuilt, (y) => String(y));
     add("Existing building footprint", p.existingBuildingFootprint, () => "on record");
+    add("Assessor taxable value", p.assessedValue, (m) => m.format());
+    add("Annual property tax", p.annualPropertyTax, (m) => m.format());
+    add("Last recorded sale", p.lastSale, (s) => `${s.price.format()} (${s.date})`);
   } else if (dd.parcel !== undefined) {
     add("Parcel", dd.parcel, () => "");
   }

@@ -12,7 +12,7 @@ import {
   approvalBlockers,
 } from "@/lib/jurisdiction/index.js";
 import type { ByRightEnvelope, RuleCitation } from "@/lib/jurisdiction/index.js";
-import { Area, Length } from "@/lib/units/index.js";
+import { Area, Length, Money } from "@/lib/units/index.js";
 
 const SRC = { label: "City of Minneapolis — Planning Primary Zoning", locator: "x", retrievalDate: "2026-08-26" };
 const CITE: RuleCitation = {
@@ -98,6 +98,41 @@ describe("buildDecisionReport", () => {
     // Flood is a plain official fact (no citation), formatted with the zone.
     const fl = r.facts.find((f) => f.label === "Flood hazard");
     expect(fl?.value).toBe("Zone X");
+  });
+
+  it("surfaces assessor facts (year built, value, tax, last sale) without blocking", () => {
+    const dd = dueDiligence();
+    const withAssessor: SiteDueDiligence = {
+      ...dd,
+      parcel: {
+        ...dd.parcel!,
+        yearBuilt: officialFact(1912, SRC),
+        assessedValue: officialFact(Money.usd("512000"), SRC),
+        annualPropertyTax: officialFact(Money.usd("6784.52"), SRC),
+        lastSale: {
+          ...officialFact(
+            {
+              date: "2021-04",
+              price: Money.usd("415000"),
+              saleCode: "SALE INCLUDES MORE THAN ONE PARCEL",
+            },
+            SRC,
+          ),
+          note: "SALE INCLUDES MORE THAN ONE PARCEL",
+        },
+      },
+    };
+    const r = buildDecisionReport(withAssessor);
+    const byLabel = (l: string) => r.facts.find((f) => f.label === l);
+    expect(byLabel("Year built")?.value).toBe("1912");
+    expect(byLabel("Assessor taxable value")?.value).toBe("$512,000.00");
+    expect(byLabel("Annual property tax")?.value).toBe("$6,784.52");
+    expect(byLabel("Last recorded sale")?.value).toContain("$415,000.00");
+    // The sale-code caveat rides along as the fact's note.
+    expect(byLabel("Last recorded sale")?.note).toContain("MORE THAN ONE PARCEL");
+    // Assessor facts are machine-parsed and must not add approval blockers.
+    const base = buildDecisionReport(dd);
+    expect(r.blockers.length).toBe(base.blockers.length);
   });
 
   it("is not approvable while unverified rules or gaps remain", () => {

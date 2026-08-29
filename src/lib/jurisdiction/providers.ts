@@ -48,6 +48,20 @@ export interface AddressProvider {
 
 // ─────────────────────────── Parcel ───────────────────────────
 
+/** A recorded sale, with the price carrying its sale-code caveat. */
+export interface ParcelSale {
+  /** Sale date, normalized to `YYYY-MM` (or `YYYY-MM-DD` when the day is known). */
+  readonly date: string;
+  readonly price: Money;
+  /**
+   * The assessor's sale-code description, when present — e.g. "SALE INCLUDES
+   * MORE THAN ONE PARCEL", which flags that the price is not attributable to
+   * this parcel alone. Callers must not read the price as a clean per-parcel
+   * value without checking this.
+   */
+  readonly saleCode?: string;
+}
+
 export interface ParcelRecord {
   readonly identity: ParcelIdentity;
   readonly geometry: EvidenceOrUnresolved<PolygonCoordinates>;
@@ -55,6 +69,14 @@ export interface ParcelRecord {
   readonly ownerName: EvidenceOrUnresolved<string>;
   /** Existing structure footprint(s), if the provider reports them. */
   readonly existingBuildingFootprint?: EvidenceOrUnresolved<PolygonCoordinates>;
+  /** Assessor year the primary structure was built, when on record. */
+  readonly yearBuilt?: EvidenceOrUnresolved<number>;
+  /** Assessor total taxable market value, when on record. */
+  readonly assessedValue?: EvidenceOrUnresolved<Money>;
+  /** Actual total annual property tax billed, when on record. */
+  readonly annualPropertyTax?: EvidenceOrUnresolved<Money>;
+  /** Last recorded sale, when on record (price carries its sale-code caveat). */
+  readonly lastSale?: EvidenceOrUnresolved<ParcelSale>;
 }
 
 export interface ParcelProvider {

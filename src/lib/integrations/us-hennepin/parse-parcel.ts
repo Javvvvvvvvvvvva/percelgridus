@@ -10,6 +10,13 @@
  * lot geometry, recorded area, and assessor owner name, but NOT existing
  * building footprints. That gap is returned as an explicit `Unresolved`, never
  * as an empty polygon a caller might read as "no building".
+ *
+ * The layer also carries assessor attributes — year built, last recorded sale,
+ * total taxable value, and the actual annual property tax. These are surfaced
+ * as optional official facts (present only when the source has a usable value;
+ * a blank or zero is omitted, never asserted as $0). The sale price carries its
+ * assessor sale-code, so a multi-parcel sale is never misread as this parcel's
+ * clean price.
  */
 
 import type { IsoDate, SourceRef } from "../../jurisdiction/evidence.js";
@@ -19,9 +26,11 @@ import { createParcelIdentity } from "../../jurisdiction/identifiers.js";
 import type { SiteId } from "../../jurisdiction/identifiers.js";
 import type {
   ParcelRecord,
+  ParcelSale,
   PolygonCoordinates,
 } from "../../jurisdiction/providers.js";
-import { Area } from "../../units/index.js";
+import type { EvidenceOrUnresolved } from "../../jurisdiction/evidence.js";
+import { Area, Money } from "../../units/index.js";
 import type {
   HennepinParcelFeature,
   HennepinParcelResponse,
@@ -77,6 +86,69 @@ export function parseUsAddress(
     streetName,
     ...(municipality !== undefined ? { municipality } : {}),
   };
+}
+
+/**
+ * Assessor year built, when it is a plausible four-digit year at or before the
+ * retrieval year. A blank, "0000", or out-of-range value yields undefined — the
+ * field is simply absent rather than asserted.
+ */
+function parseYearBuilt(
+  raw: string | undefined,
+  src: SourceRef,
+  retrievalDate: IsoDate,
+): EvidenceOrUnresolved<number> | undefined {
+  const t = trimmed(raw);
+  if (t === undefined || !/^\d{4}$/.test(t)) return undefined;
+  const year = Number(t);
+  const currentYear = Number(retrievalDate.slice(0, 4));
+  if (year < 1800 || year > currentYear + 1) return undefined;
+  return officialFact(year, src, { confidence: "high" });
+}
+
+/** A positive whole-dollar amount as an official Money fact, else undefined. */
+function parseMoneyFact(
+  raw: number | undefined,
+  src: SourceRef,
+): EvidenceOrUnresolved<Money> | undefined {
+  if (typeof raw !== "number" || !Number.isFinite(raw) || raw <= 0) {
+    return undefined;
+  }
+  return officialFact(Money.usd(String(raw)), src, { confidence: "high" });
+}
+
+/** Normalize a Hennepin `YYYYMM` sale date to `YYYY-MM`, else undefined. */
+function normalizeSaleDate(raw: string | undefined): string | undefined {
+  const t = trimmed(raw);
+  if (t === undefined || !/^\d{6}$/.test(t)) return undefined;
+  const month = Number(t.slice(4, 6));
+  if (month < 1 || month > 12) return undefined;
+  return `${t.slice(0, 4)}-${t.slice(4, 6)}`;
+}
+
+/**
+ * Last recorded sale, when there is both a usable date and a positive price.
+ * The sale-code caveat is carried on the value AND echoed as the fact's note,
+ * so a multi-parcel sale is never read as this parcel's clean price.
+ */
+function parseLastSale(
+  attrs: HennepinParcelFeature["attributes"],
+  src: SourceRef,
+): EvidenceOrUnresolved<ParcelSale> | undefined {
+  const a = attrs ?? {};
+  const date = normalizeSaleDate(a.SALE_DATE);
+  const price = a.SALE_PRICE;
+  if (date === undefined || typeof price !== "number" || price <= 0) {
+    return undefined;
+  }
+  const saleCode = trimmed(a.SALE_CODE_NAME);
+  const sale: ParcelSale = {
+    date,
+    price: Money.usd(String(price)),
+    ...(saleCode !== undefined ? { saleCode } : {}),
+  };
+  const fact = officialFact<ParcelSale>(sale, src, { confidence: "high" });
+  return saleCode !== undefined ? { ...fact, note: saleCode } : fact;
 }
 
 function source(ctx: ParseParcelContext): SourceRef {
@@ -151,6 +223,11 @@ export function parseParcelFeature(
           `Hennepin parcel ${pid ?? "(unknown PID)"} had no owner on record. Confirm from the deed.`,
         );
 
+  const yearBuilt = parseYearBuilt(attrs.BUILD_YR, src, ctx.retrievalDate);
+  const assessedValue = parseMoneyFact(attrs.TAXABLE_VAL_TOT, src);
+  const annualPropertyTax = parseMoneyFact(attrs.TAX_TOT, src);
+  const lastSale = parseLastSale(attrs, src);
+
   return {
     identity,
     geometry,
@@ -164,6 +241,11 @@ export function parseParcelFeature(
       "The county parcel layer carries no building footprint. Source it from the municipal building layer or a site survey.",
       { blocksApproval: false },
     ),
+    // Optional assessor facts — present only when the source has a usable value.
+    ...(yearBuilt !== undefined ? { yearBuilt } : {}),
+    ...(assessedValue !== undefined ? { assessedValue } : {}),
+    ...(annualPropertyTax !== undefined ? { annualPropertyTax } : {}),
+    ...(lastSale !== undefined ? { lastSale } : {}),
   };
 }
 

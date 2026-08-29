@@ -32,6 +32,18 @@ export interface HennepinParcelAttributes {
   readonly PARCEL_AREA?: number;
   readonly LAT?: number;
   readonly LON?: number;
+  /** Assessor year the primary structure was built (string, e.g. "2015"). */
+  readonly BUILD_YR?: string;
+  /** Last recorded sale date as `YYYYMM` (e.g. "201502"). */
+  readonly SALE_DATE?: string;
+  /** Last recorded sale price, whole dollars. */
+  readonly SALE_PRICE?: number;
+  /** Sale-code caveat, e.g. "SALE INCLUDES MORE THAN ONE PARCEL". */
+  readonly SALE_CODE_NAME?: string;
+  /** Assessor total taxable market value, whole dollars. */
+  readonly TAXABLE_VAL_TOT?: number;
+  /** Actual total annual property tax billed, dollars. */
+  readonly TAX_TOT?: number;
   readonly [key: string]: string | number | undefined;
 }
 
