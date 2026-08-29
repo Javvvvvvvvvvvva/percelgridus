@@ -93,28 +93,34 @@ export function parseZoningDistrict(
   return name.length > 0 ? { ...fact, note: name } : fact;
 }
 
+/** Optional sourced fields the live adapter resolves, threaded into the envelope. */
+export interface ResolvedEnvelopeFields {
+  readonly allowedUses?: EvidenceOrUnresolved<readonly string[]>;
+  readonly minParkingStalls?: EvidenceOrUnresolved<number>;
+}
+
 /**
  * Assemble a full by-right envelope from a resolved (or unresolved) primary
  * district and, optionally, the numeric standards the built form district
- * governs (height, FAR, lot coverage, setbacks — Chapter 540). Fields with no
- * source — allowed uses, parking, overlays, discretionary approvals, and any
- * built form standard not passed in — stay Unresolved.
+ * governs (height, FAR, lot coverage, setbacks — Chapter 540) plus any other
+ * sourced fields (allowed uses, parking). Fields with no source — overlays,
+ * discretionary approvals, and any standard not passed in — stay Unresolved.
  */
 export function buildEnvelope(
   district: EvidenceOrUnresolved<string>,
   numeric?: BuiltFormNumericEnvelope,
-  allowedUses?: EvidenceOrUnresolved<readonly string[]>,
+  resolved: ResolvedEnvelopeFields = {},
 ): ByRightEnvelope {
   const gaps = pendingRuleGaps();
   return {
     jurisdictionId: MINNEAPOLIS_JURISDICTION_ID,
     zoningDistrict: district,
-    allowedUses: allowedUses ?? gaps.allowedUses,
+    allowedUses: resolved.allowedUses ?? gaps.allowedUses,
     maxFar: numeric?.maxFar ?? gaps.maxFar,
     maxLotCoverage: numeric?.maxLotCoverage ?? gaps.maxLotCoverage,
     maxHeight: numeric?.maxHeight ?? gaps.maxHeight,
     minSetbacks: numeric?.minSetbacks ?? gaps.minSetbacks,
-    minParkingStalls: gaps.minParkingStalls,
+    minParkingStalls: resolved.minParkingStalls ?? gaps.minParkingStalls,
     overlays: gaps.overlays,
     discretionaryApprovals: gaps.discretionaryApprovals,
   };

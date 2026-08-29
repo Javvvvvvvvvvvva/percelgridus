@@ -27,6 +27,11 @@ export type {
 export { resolveAllowedUses } from "./use-rules.js";
 export type { AllowedUsesContext } from "./use-rules.js";
 
+export { resolveMinParkingStalls } from "./parking-rules.js";
+export type { MinParkingContext } from "./parking-rules.js";
+
+export type { ResolvedEnvelopeFields } from "./parse-zoning.js";
+
 export { parseBuiltFormDistrict } from "./parse-built-form.js";
 export type { ParseBuiltFormContext } from "./parse-built-form.js";
 export type {

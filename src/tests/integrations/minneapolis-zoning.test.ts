@@ -9,6 +9,7 @@ import {
   parseZoningEnvelope,
   parseBuiltFormDistrict,
   resolveAllowedUses,
+  resolveMinParkingStalls,
   resolveNumericEnvelope,
   primaryCategoryFromDistrict,
   MINNEAPOLIS_BUILT_FORM_STANDARDS,
@@ -170,6 +171,12 @@ describe("MinneapolisZoningProvider", () => {
     // UN2 permits 1–3 family dwellings by right (§ 545.100).
     if (!isEvidence(env.allowedUses)) throw new Error("expected allowed uses");
     expect(env.allowedUses.value).toContain("three-family dwelling");
+    // Parking minimum is a sourced citywide zero (Chapter 541), not a gap.
+    if (!isEvidence(env.minParkingStalls)) {
+      throw new Error("expected a parking rule");
+    }
+    expect(env.minParkingStalls.value).toBe(0);
+    expect(env.minParkingStalls.citation?.ordinanceSection).toContain("541");
   });
 
   it("resolves FAR when the development intent supplies a use class", async () => {
@@ -398,6 +405,29 @@ describe("resolveAllowedUses", () => {
       const r = resolveAllowedUses(code, ctx);
       expect(isUnresolved(r)).toBe(true);
     }
+  });
+});
+
+describe("resolveMinParkingStalls", () => {
+  const ctx = { retrievalDate: "2026-08-26", parserVersion: "test" };
+
+  it("resolves a citywide zero minimum as an unverified official rule (Ch. 541)", () => {
+    const r = resolveMinParkingStalls(ctx);
+    expect(isEvidence(r)).toBe(true);
+    expect(r.provenance).toBe("official");
+    expect(r.value).toBe(0);
+    // Sourced but not human-confirmed, so it still routes through the gate.
+    expect(r.verification).toBe("unverified");
+    expect(r.citation?.ordinanceSection).toContain("541");
+    // Scoped to minimum vehicle stalls, not bike/accessible/loading/TDM.
+    expect(r.note).toContain("VEHICLE");
+    // Independent of district or use — the reform is citywide.
+    expect(resolveMinParkingStalls(ctx).value).toBe(0);
+  });
+
+  it("is an approval blocker until confirmed (unverified), like every parsed rule", () => {
+    const r = resolveMinParkingStalls(ctx);
+    expect(approvalBlockers([r]).length).toBe(1);
   });
 });
 

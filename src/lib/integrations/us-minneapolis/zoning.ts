@@ -11,8 +11,9 @@
  * height, setbacks, lot coverage) are keyed by the built form district and come
  * from the Chapter 540 rule table (built-form-rules) — currently empty because
  * the ordinance text is not reachable from this environment, so those fields
- * surface as Unresolved. Allowed uses, parking, overlays, and discretionary
- * approvals are likewise Unresolved. A sourced rule, once added, flows through
+ * surface as Unresolved. Allowed uses (§ 545.100) and the citywide-zero parking
+ * minimum (Chapter 541) are sourced; overlays and discretionary approvals stay
+ * Unresolved. A sourced rule, once added, flows through
  * as an unverified (approval-blocking) preliminary reference — never a legal
  * maximum (README-US §2 "no safe nationwide hard-coded zoning engine"; §4).
  *
@@ -43,6 +44,7 @@ import type {
 import { parseBuiltFormDistrict } from "./parse-built-form.js";
 import { buildEnvelope, parseZoningDistrict } from "./parse-zoning.js";
 import { resolveAllowedUses } from "./use-rules.js";
+import { resolveMinParkingStalls } from "./parking-rules.js";
 import type { EvidenceOrUnresolved } from "../../jurisdiction/evidence.js";
 import type { ZoningQueryResponse } from "./zoning-response.js";
 import {
@@ -239,7 +241,17 @@ export class MinneapolisZoningProvider implements ZoningEvidenceProvider {
       });
     }
 
-    return buildEnvelope(district, numeric, allowedUses);
+    // Minimum off-street parking is citywide-zero (Chapter 541 reform), so it
+    // resolves independently of the district or use — the same for every parcel.
+    const minParkingStalls = resolveMinParkingStalls({
+      retrievalDate,
+      parserVersion: this.parserVersion,
+    });
+
+    return buildEnvelope(district, numeric, {
+      ...(allowedUses !== undefined ? { allowedUses } : {}),
+      minParkingStalls,
+    });
   }
 
   citationFor(section: string): RuleCitation {
