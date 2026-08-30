@@ -14,40 +14,41 @@ unresolved values come back `null`, never a fabricated number.
 - `app/report/page.tsx`, `app/envelope/page.tsx`, `app/proforma/page.tsx` are
   **server-rendered on demand** — they call `getSiteAnalysis(address)` and show
   live data (verified end-to-end: `2320 Colfax Ave S` → APN 3302924110099, UN2,
-  42 ft / FAR 0.7 / 60 % coverage, 6,177 buildable GSF, 8 approval blockers,
-  with §540.x / §545.100 citations).
+  42 ft / FAR 0.7 / 60 % coverage, 6,177 buildable GSF, parking min 0 (Ch. 541),
+  no overlay, built 2015, effective tax 1.89 %, 7 approval blockers, with
+  §540.x / §545.100 citations).
 - `app/proforma/proforma-client.tsx` keeps the interactive sliders (user
-  assumptions); the server wrapper seeds it with the real buildable envelope.
-- `app/page.tsx` (landing) and `app/search/page.tsx` stay static; `lib/mock-data.ts`
-  now only backs the search page's recent-lookups list.
+  assumptions); the server wrapper seeds it with the real buildable envelope and
+  a "market reference (not inputs)" panel from the assessor facts.
+- `app/page.tsx` (landing) stays static; `app/search/page.tsx` has a live address
+  form that passes `?address=` through; `lib/mock-data.ts` now only backs the
+  search page's recent-lookups list.
 
 Build/run uses webpack (`next … --webpack`) with `experimental.externalDir` +
 `resolve.extensionAlias` so the Next bundler can import the library's ESM
 `.js`-specified TypeScript sources from `../../src/lib`. See `next.config.ts`.
 
-Still to do: bind the report's flood/topography fact cards from
-`sa.report.facts` (they currently keep the design's static copy), and add an
-address form on the landing/search page that passes `?address=` through.
+The report/envelope/pro-forma pages now render REAL data end-to-end: the flood,
+topography, zoning, assessor (year built / assessor value / actual tax / last
+sale with its sale-code caveat), effective tax rate, overlay, and parking cards
+all come from the library through `getSiteAnalysis`; the search page's address
+form passes `?address=` through to a live analysis. `lib/mock-data.ts` now only
+backs the search page's recent-lookups list, and the pro-forma sliders are the
+one place `lib/financials.ts` still drives the math (user assumptions only).
 
-`README-US.md` / `PROJECT_MEMORY.md` at the repo root are explicit that this
-project implements contracts and providers before screens (see
-"Implement domain adapters and unit/currency contracts before replacing
-integrations or translating screens"). This folder is exactly the piece that
-comes later — it's a self-contained Next.js app rendering the 5 static
-artboards from `design-handoff/project/PARCELGRID US.dc.html` (landing,
-search, current-condition report, build envelope, pro forma), with hardcoded
-mock data and the pro forma math ported 1:1 from the design prototype.
+Origin: this folder started as a self-contained Claude Design handoff — the 5
+static artboards from `design-handoff/project/PARCELGRID US.dc.html` (landing,
+search, current-condition report, build envelope, pro forma) with hardcoded mock
+data. It has since been wired to `src/lib` per `README-US.md` / `PROJECT_MEMORY.md`
+("implement domain adapters and unit/currency contracts before … translating
+screens"): the pages carry real `Money`/`Length`/`Area` values and
+`Evidence`/`Unresolved` provenance, with unresolved facts shown as `—` or open
+items, never a fabricated number.
 
-It does **not** call into `src/lib` (units, jurisdiction, finance, evidence,
-providers) at all. Before any of this becomes real product screens, it needs
-to be rebuilt against those contracts — real `Money`/`Length`/`Area` value
-objects, `Evidence`/`Unresolved` provenance from `src/lib/jurisdiction`, real
-provider data instead of the mock parcel in `lib/mock-data.ts`, and the
-finance ledger in `src/lib/finance` instead of the standalone
-`lib/financials.ts` copy.
-
-Treat this as a **visual reference and starting point**, not a UI to merge
-as-is.
+Still a prototype, not the production UI: the landing map is static (no
+state-click interaction yet), and only Minneapolis renders full by-right rules
+(other jurisdictions surface the district with rules pending — see
+`PROJECT_MEMORY.md`). It is not deployed.
 
 ## What's here
 

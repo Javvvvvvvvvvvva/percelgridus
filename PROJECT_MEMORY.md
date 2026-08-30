@@ -1,6 +1,6 @@
 # PARCELGRID US — current working baseline
 
-Last updated: 2026-08-26
+Last updated: 2026-08-30
 
 Short handoff doc kept against the actual code, so the next worker does not
 mistake an old "next session" note for a current requirement. The product and
@@ -42,8 +42,15 @@ profile. It is cloned read-only for reference; nothing is copied verbatim.
 | JurisdictionProfile + registry | `src/lib/jurisdiction/profile.ts` |
 | AddressProvider — U.S. Census Geocoder | `src/lib/integrations/us-census/` |
 | ParcelProvider — Hennepin County GIS | `src/lib/integrations/us-hennepin/` |
+| ParcelProvider — Regrid (nationwide, token-gated) | `src/lib/integrations/us-regrid/` |
 | HazardProvider (flood) — FEMA NFHL | `src/lib/integrations/us-fema/` |
 | HazardProvider (terrain) — USGS 3DEP | `src/lib/integrations/us-usgs/` |
+| Shared US national providers (address + flood + terrain) | `src/lib/integrations/us-national/` |
+| Jurisdiction — Minneapolis (full zoning) | `src/lib/integrations/us-minneapolis/` |
+| Jurisdiction — Saint Paul (district zoning, parcel pending) | `src/lib/integrations/us-stpaul/` |
+| Parcel tax assessment (current effective rate) | `src/lib/finance/parcel-tax.ts` |
+| Address → jurisdiction routing | `src/lib/jurisdiction/profile.ts` (`resolveByAddress`), `src/lib/intake/intake.ts` (`intakeSiteRouted`) |
+| UI prototype wired to the library | `ui-prototype/` (`lib/parcelgrid.ts` bridge) |
 
 ## Contracts that must not regress
 
@@ -264,6 +271,112 @@ a translation.
    the profile's own `financeProfile` is still all-Unresolved (no sourced market
    data), so a real run supplies user assumptions; wiring dated market sources is
    the natural finance follow-up.
+
+## Session 2026-08-30 — deepened Minneapolis, then went multi-jurisdiction
+
+Everything below is merged to `main` and covered by `pnpm verify` (tsc + full
+Vitest suite; live checks stay opt-in behind env flags). Corrects a few earlier
+notes: Minneapolis parking and overlays are now RESOLVED (not Unresolved), and a
+representative parcel now shows 7 blockers, not 8.
+
+**Minneapolis, deepened (real data, no fabrication):**
+- **Parking (Chapter 541):** `parking-rules.ts` — Minneapolis abolished off-street
+  parking minimums citywide (2021), so `minParkingStalls` resolves to a sourced 0
+  everywhere (no table/context needed). Official but `unverified`, so still gated.
+- **Overlay districts (Chapter 551):** `overlays.ts` — resolved SPATIALLY from the
+  City "Planning Zoning Overlay" layer (a POST intersects-count per sublayer). A
+  clean set of misses resolves the field to an empty, non-blocking list ("no
+  overlay applies"); any sublayer error degrades to one Unresolved gap.
+  **Floodplain guard:** that sublayer embeds FIRM-panel Zone-X background polygons
+  (null designation) that blanket the city, so the query filters
+  `SYMBOL_NAM IS NOT NULL` — without it every inland parcel false-positived as
+  floodplain. "Split Zoning" sublayer is excluded (already handled by the primary
+  parser). Verified live: inland Colfax → none; a riverfront parcel → Shoreland.
+- **Hennepin assessor facts** (`us-hennepin/parse-parcel.ts`): `BUILD_YR`,
+  `TAXABLE_VAL_TOT`, `TAX_TOT`, `SALE_DATE/PRICE/CODE` → optional official facts on
+  `ParcelRecord` (yearBuilt, assessedValue, annualPropertyTax, lastSale). Each
+  emitted only when present; a blank/zero is omitted, never asserted as $0. The
+  sale-code caveat (e.g. "SALE INCLUDES MORE THAN ONE PARCEL") rides on the value
+  AND as the fact note, so a multi-parcel sale is never read as a clean price.
+- **Current effective property-tax rate** (`finance/parcel-tax.ts`,
+  `buildParcelTaxAssessment`): derived exactly from the parcel's own actual tax ÷
+  assessor value — a current-condition `algorithm` fact, explicitly NOT a forward
+  redevelopment rate (a rebuild is reassessed). The deed/transfer tax stays
+  Unresolved (statute not verifiable from a reachable source — never guessed).
+- **Setbacks / discretionary approvals** stay honestly Unresolved: yard rules are
+  contextual and the ordinance-text hosts are egress-blocked here, so transcribing
+  them would violate the no-fabrication contract.
+
+**Robustness / correctness fixes (help every jurisdiction):**
+- **FEMA + Minneapolis zoning now POST the geometry** (body, not URL). Detailed
+  lakefront/riverfront parcels overflowed the GET URL limit → HTTP 414/431 →
+  whole analysis 500'd. Point/attribute queries (Census/Hennepin/USGS) stay GET.
+- **Intake is resilient** (`attemptOr` in `intake.ts`): a THROWN provider failure
+  (timeout/5xx/DNS) degrades to an Unresolved source-failure gap instead of
+  aborting the run. A report is always produced; the failed fact blocks approval
+  and is marked "transient source failure, retry", distinct from "no data".
+
+**Multi-jurisdiction architecture:**
+- **`us-national`** — `createUsNationalProviders()` bundles the three FEDERAL
+  providers (Census / FEMA / USGS) shared by every US jurisdiction. Verified live
+  across DC / TX / CO. Minneapolis and Saint Paul both compose it.
+- **Saint Paul (`us-stpaul`)** — the second jurisdiction. Live principal-zoning
+  adapter (district resolved from the City ArcGIS Online layer; by-right rules
+  Unresolved pending Saint Paul Legislative Code Title VIII/Ch. 66 — the same
+  boundary Minneapolis started at). Parcel adapter is a documented PENDING
+  placeholder: Ramsey/Met Council/MnGeo parcel hosts are egress-blocked here.
+- **Regrid (`us-regrid`)** — a nationwide `ParcelProvider` (token-gated). One
+  adapter, ~150M parcels, because Regrid normalizes every county's assessor record
+  into one address/point API. Token is stripped from the recorded locator (never
+  in a report/log). Wired into Saint Paul as a drop-in: `createStPaulProfile({
+  regridToken })` swaps the pending placeholder for Regrid. No live call is made
+  here (needs a token + `app.regrid.com` egress); the exact field/endpoint schema
+  should be re-confirmed against live docs when a token is wired in.
+- **Address → jurisdiction routing** — `JurisdictionProfile.placeNames` +
+  `JurisdictionRegistry.resolveByAddress` (match state AND city; honest `undefined`
+  when uncovered, so a same-named city in another state never mis-routes).
+  `intakeSiteRouted` geocodes once, routes, then runs intake with the chosen
+  profile (`IntakeOptions.preNormalized` avoids a second geocode).
+
+**UI prototype** (`ui-prototype/`) is wired to the library via `lib/parcelgrid.ts`
+(server bridge running the real pipeline). Report/envelope/pro-forma pages render
+live data: assessor facts, effective tax rate, overlays, parking, plus a pro-forma
+"market reference (not inputs)" panel. Runs on Next.js with `--webpack` +
+`extensionAlias` to import the library's `.js`-specified TS. Not deployed
+(deployment is gated on the founder finishing more states).
+
+## How to add a new jurisdiction
+
+The seam is proven: a new jurisdiction is **national bundle + parcel + zoning**.
+The only genuinely new code is usually the ZONING adapter.
+
+1. **Parcel source.** Either (a) a county GIS `ParcelProvider` (like Hennepin —
+   provenance-first, free, but one adapter per county and often on an egress-
+   blocked host), or (b) the `RegridParcelProvider` with a token — one adapter,
+   all states. Prefer Regrid for breadth; a county adapter when the assessor's own
+   layer is required and reachable.
+2. **Zoning adapter.** Implement `ZoningEvidenceProvider` against the city's
+   zoning GIS (see `us-stpaul/zoning.ts` for the minimal district-only shape, or
+   `us-minneapolis/` for full by-right rules). POST the geometry. Resolve the
+   district as an official spatial fact; leave by-right numeric rules Unresolved
+   until the ordinance is transcribed with exact citations (never from memory).
+   Split-zoned parcels → Unresolved, never a mis-pick.
+3. **Profile.** `create<City>Profile()` = `createUsNationalProviders(config)` +
+   your parcel + your zoning + pending finance/tax. Set `stateCode` and
+   `placeNames` (lowercased city spellings) so routing works. Register it
+   (`register<City>`).
+4. **Tests.** Fixture-backed parse/provider tests + an opt-in live smoke test
+   (gate on a `<CITY>_LIVE=1` flag). Add the profile to a two-jurisdiction
+   registry test if routing coverage matters.
+
+**The egress wall (this dev environment only):** most county/city GIS hosts are
+blocked by the org egress policy; only `services*.arcgis.com` (ArcGIS Online),
+`gis.hennepin.us`, and the federal hosts are allowlisted. This is a sandbox
+limit, NOT a product limit — a deployed app has normal internet. To develop
+against more hosts, widen the environment's network policy (see
+code.claude.com/docs/en/claude-code-on-the-web); an org admin may be required.
+For real all-states coverage, the scalable answer is the Regrid parcel adapter
+(above) plus per-jurisdiction zoning.
 
 ### Runtime egress note
 
