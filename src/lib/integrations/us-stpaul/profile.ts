@@ -90,6 +90,7 @@ export function createStPaulProfile(
     stateCode: "MN",
     jurisdictionId: SAINT_PAUL_JURISDICTION_ID,
     displayName: "Saint Paul, Ramsey County, MN",
+    placeNames: ["saint paul", "st paul", "st. paul"],
 
     units: US_UNIT_PROFILE,
     addressProvider: national.addressProvider,

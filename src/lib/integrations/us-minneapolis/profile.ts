@@ -66,6 +66,7 @@ export function createMinneapolisProfile(
     stateCode: "MN",
     jurisdictionId: MINNEAPOLIS_JURISDICTION_ID,
     displayName: "Minneapolis, Hennepin County, MN",
+    placeNames: ["minneapolis"],
 
     units: US_UNIT_PROFILE,
     addressProvider: national.addressProvider,

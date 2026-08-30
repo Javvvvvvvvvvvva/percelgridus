@@ -30,8 +30,10 @@ import {
   isEvidence,
   isUnresolved,
   unresolved,
+  JurisdictionRegistry,
 } from "../jurisdiction/index.js";
 import type {
+  AddressProvider,
   ByRightEnvelope,
   DevelopmentIntent,
   Evidence,
@@ -56,6 +58,12 @@ export interface IntakeDeps {
 export interface IntakeOptions {
   /** The proposed building, where a by-right standard depends on it (FAR). */
   readonly intent?: DevelopmentIntent;
+  /**
+   * An already-normalized address, to skip re-geocoding. Set by the routed
+   * entry point, which geocodes once to pick the jurisdiction and hands the
+   * result straight through.
+   */
+  readonly preNormalized?: Evidence<NormalizedAddress>;
 }
 
 /**
@@ -186,12 +194,14 @@ export async function intakeSite(
 ): Promise<SiteDueDiligence> {
   const { profile, repository } = deps;
 
-  // 1. Normalize the address. Without it there is no point to proceed from.
+  // 1. Normalize the address (unless the routed entry point already did).
   //    A thrown source failure degrades to Unresolved, not a crash.
-  const address = await attemptOr(
-    () => profile.addressProvider.normalize(rawAddress),
-    (m) => sourceUnreachable("address", "user", m),
-  );
+  const address =
+    opts.preNormalized ??
+    (await attemptOr(
+      () => profile.addressProvider.normalize(rawAddress),
+      (m) => sourceUnreachable("address", "user", m),
+    ));
   if (isUnresolved(address)) {
     return {
       rawAddress,
@@ -285,5 +295,74 @@ export async function intakeSite(
     zoning,
     persisted: true,
     blockers,
+  };
+}
+
+// ─────────────────────── Multi-jurisdiction entry point ───────────────────────
+
+export interface RoutedIntakeDeps {
+  readonly registry: JurisdictionRegistry;
+  readonly repository: SiteRepository;
+  /** Shared geocoder used to pick the jurisdiction (Census works nationwide). */
+  readonly addressProvider: AddressProvider;
+}
+
+export interface RoutedSiteDueDiligence extends SiteDueDiligence {
+  /** The jurisdiction the address routed to, when one was found. */
+  readonly jurisdictionId?: string;
+  readonly jurisdictionName?: string;
+}
+
+/**
+ * Multi-jurisdiction entry point: geocode the address once, route it to the
+ * jurisdiction that serves it, then run intake with that profile (handing the
+ * already-normalized address through so it is not geocoded twice). When no
+ * registered jurisdiction covers the address, stop with an honest gap rather
+ * than analyzing it under the wrong adapter — a wrong jurisdiction would attach
+ * the wrong zoning and parcel sources.
+ */
+export async function intakeSiteRouted(
+  rawAddress: string,
+  deps: RoutedIntakeDeps,
+  opts: IntakeOptions = {},
+): Promise<RoutedSiteDueDiligence> {
+  const address = await attemptOr(
+    () => deps.addressProvider.normalize(rawAddress),
+    (m) => sourceUnreachable("address", "user", m),
+  );
+  if (isUnresolved(address)) {
+    return {
+      rawAddress,
+      address,
+      persisted: false,
+      blockers: approvalBlockers([address]),
+    };
+  }
+
+  const profile = deps.registry.resolveByAddress(address.value.normalized);
+  if (profile === undefined) {
+    const gap = unresolved(
+      "jurisdiction",
+      "user",
+      `No registered jurisdiction adapter serves "${address.value.normalized}". ` +
+        `Register a profile for its state and city to analyze this address.`,
+    );
+    return {
+      rawAddress,
+      address,
+      persisted: false,
+      blockers: approvalBlockers([gap]),
+    };
+  }
+
+  const dd = await intakeSite(
+    rawAddress,
+    { profile, repository: deps.repository },
+    { ...opts, preNormalized: address },
+  );
+  return {
+    ...dd,
+    jurisdictionId: profile.jurisdictionId,
+    jurisdictionName: profile.displayName,
   };
 }

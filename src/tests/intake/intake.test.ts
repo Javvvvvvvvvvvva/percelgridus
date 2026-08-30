@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { intakeSite, type IntakeDeps } from "@/lib/intake/index.js";
+import { intakeSite, intakeSiteRouted, type IntakeDeps } from "@/lib/intake/index.js";
 import { InMemorySiteRepository } from "@/lib/persistence/index.js";
+import { JurisdictionRegistry } from "@/lib/jurisdiction/index.js";
 import {
   createParcelIdentity,
   officialFact,
@@ -261,6 +262,45 @@ describe("intakeSite", () => {
     }
     expect(dd.persisted).toBe(false);
     expect(repo.list()).toHaveLength(0);
+  });
+
+  it("intakeSiteRouted routes an address to its jurisdiction and runs intake", async () => {
+    const repo = new InMemorySiteRepository();
+    const base = profileWith({
+      address: async () => addressEvidence(),
+      parcel: async () => resolvedParcel(true),
+    });
+    const profile = { ...base, placeNames: ["minneapolis"] };
+    const registry = new JurisdictionRegistry();
+    registry.register(profile);
+
+    const dd = await intakeSiteRouted("300 S 4th St", {
+      registry,
+      repository: repo,
+      addressProvider: profile.addressProvider,
+    });
+    // addressEvidence normalizes to "..., MINNEAPOLIS, MN, 55415" -> Minneapolis.
+    expect(dd.jurisdictionId).toBe("us-mn-hennepin-minneapolis");
+    expect(dd.jurisdictionName).toContain("Minneapolis");
+    expect(dd.persisted).toBe(true);
+    // The address was geocoded once and handed through (no second lookup).
+    expect(dd.parcel && !isUnresolved(dd.parcel)).toBe(true);
+  });
+
+  it("intakeSiteRouted stops with a jurisdiction gap when no adapter serves the address", async () => {
+    const base = profileWith({
+      address: async () => addressEvidence(),
+      parcel: async () => resolvedParcel(true),
+    });
+    const registry = new JurisdictionRegistry(); // empty — nothing covers it
+    const dd = await intakeSiteRouted("300 S 4th St", {
+      registry,
+      repository: new InMemorySiteRepository(),
+      addressProvider: base.addressProvider,
+    });
+    expect(dd.jurisdictionId).toBeUndefined();
+    expect(dd.persisted).toBe(false);
+    expect(dd.blockers.map((b) => b.subject)).toContain("jurisdiction");
   });
 
   it("treats a geometry-less parcel's hazards as gaps but still persists", async () => {

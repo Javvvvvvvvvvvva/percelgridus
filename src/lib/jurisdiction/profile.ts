@@ -28,6 +28,14 @@ export interface JurisdictionProfile {
   /** Human label, e.g. "Minneapolis, Hennepin County, MN". */
   readonly displayName: string;
 
+  /**
+   * Lowercased place (city) names this profile serves, used to route an address
+   * to its jurisdiction. Several spellings of one city are allowed (e.g.
+   * "saint paul", "st paul", "st. paul"). A profile with no place names is not
+   * address-routable — it can still be fetched by id.
+   */
+  readonly placeNames?: readonly string[];
+
   readonly units: UnitProfile;
   readonly addressProvider: AddressProvider;
   readonly parcelProvider: ParcelProvider;
@@ -35,6 +43,35 @@ export interface JurisdictionProfile {
   readonly hazardProviders: readonly HazardProvider[];
   readonly financeProfile: FinanceAssumptionProfile;
   readonly taxProfile: TaxEstimateProfile;
+}
+
+/**
+ * Split a Census-normalized one-line address into its USPS state code and city.
+ * The Census normalized form is "STREET, CITY, ST, ZIP" (the state part may be
+ * "ST" or "ST 55415"); both are handled. Returns lowercased city and uppercased
+ * state, or `undefined` parts when they cannot be found — never a guess.
+ */
+export function parseStateCity(normalizedAddress: string): {
+  readonly stateCode?: string;
+  readonly city?: string;
+} {
+  const parts = normalizedAddress.split(",").map((s) => s.trim()).filter((s) => s.length > 0);
+  let stateIndex = -1;
+  let stateCode: string | undefined;
+  for (let i = 0; i < parts.length; i++) {
+    const m = /^([A-Za-z]{2})(?:\s+\d{5}(?:-\d{4})?)?$/.exec(parts[i]!);
+    if (m) {
+      stateIndex = i;
+      stateCode = m[1]!.toUpperCase();
+      break;
+    }
+  }
+  const city =
+    stateIndex > 0 ? parts[stateIndex - 1]!.toLowerCase() : undefined;
+  return {
+    ...(stateCode !== undefined ? { stateCode } : {}),
+    ...(city !== undefined ? { city } : {}),
+  };
 }
 
 /**
@@ -68,5 +105,22 @@ export class JurisdictionRegistry {
 
   list(): readonly JurisdictionProfile[] {
     return [...this.byId.values()];
+  }
+
+  /**
+   * Route a normalized address to the jurisdiction that serves it, by matching
+   * the address's state AND city against each profile's stateCode + placeNames.
+   * Returns `undefined` when no registered jurisdiction covers the address —
+   * an honest "no adapter here", never a wrong-jurisdiction guess (which would
+   * attach the wrong zoning/parcel source).
+   */
+  resolveByAddress(normalizedAddress: string): JurisdictionProfile | undefined {
+    const { stateCode, city } = parseStateCity(normalizedAddress);
+    if (stateCode === undefined || city === undefined) return undefined;
+    for (const profile of this.byId.values()) {
+      if (profile.stateCode.toUpperCase() !== stateCode) continue;
+      if (profile.placeNames?.some((name) => name === city)) return profile;
+    }
+    return undefined;
   }
 }

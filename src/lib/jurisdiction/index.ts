@@ -54,4 +54,4 @@ export type {
 } from "./providers.js";
 
 export type { JurisdictionProfile } from "./profile.js";
-export { JurisdictionRegistry } from "./profile.js";
+export { JurisdictionRegistry, parseStateCity } from "./profile.js";
