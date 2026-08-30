@@ -193,6 +193,76 @@ describe("intakeSite", () => {
     expect(repo.list()).toHaveLength(0);
   });
 
+  it("degrades a thrown hazard/zoning source failure to Unresolved, never throws", async () => {
+    const repo = new InMemorySiteRepository();
+    const base = profileWith({
+      address: async () => addressEvidence(),
+      parcel: async () => resolvedParcel(true),
+    });
+    const profile: JurisdictionProfile = {
+      ...base,
+      zoningProvider: {
+        ...base.zoningProvider,
+        envelopeFor: async () => {
+          throw new Error("Minneapolis zoning returned HTTP 503");
+        },
+      },
+      hazardProviders: [
+        {
+          id: "boom-flood",
+          hazardKind: "flood",
+          flood: async () => {
+            throw new Error("FEMA NFHL request failed");
+          },
+        },
+        {
+          id: "boom-terrain",
+          hazardKind: "terrain",
+          terrain: async () => {
+            throw new Error("USGS EPQS request failed");
+          },
+        },
+      ],
+    };
+
+    // The whole point: a thrown source failure must not reject the pipeline.
+    const dd = await intakeSite("300 S 4th St", { profile, repository: repo });
+
+    expect(dd.persisted).toBe(true);
+    expect(dd.flood && isUnresolved(dd.flood)).toBe(true);
+    expect(dd.terrain && isUnresolved(dd.terrain)).toBe(true);
+    expect(isUnresolved(dd.zoning!.zoningDistrict)).toBe(true);
+    // Each transient failure is surfaced as an approval-blocking gap, and the
+    // message marks it a source failure to retry (not a resolved "no data").
+    if (dd.flood && isUnresolved(dd.flood)) {
+      expect(dd.flood.requiredAction).toMatch(/could not be reached/);
+      expect(dd.flood.requiredAction).toMatch(/FEMA NFHL request failed/);
+    }
+    const subjects = dd.blockers.map((b) => b.subject);
+    expect(subjects).toContain("flood hazard");
+    expect(subjects).toContain("terrain");
+    expect(subjects).toContain("zoning district");
+  });
+
+  it("degrades a thrown address source failure to Unresolved without persisting", async () => {
+    const repo = new InMemorySiteRepository();
+    const dd = await intakeSite("300 S 4th St", {
+      profile: profileWith({
+        address: async () => {
+          throw new Error("census geocoder 500");
+        },
+        parcel: async () => resolvedParcel(true),
+      }),
+      repository: repo,
+    });
+    expect(isUnresolved(dd.address)).toBe(true);
+    if (isUnresolved(dd.address)) {
+      expect(dd.address.requiredAction).toMatch(/could not be reached/);
+    }
+    expect(dd.persisted).toBe(false);
+    expect(repo.list()).toHaveLength(0);
+  });
+
   it("treats a geometry-less parcel's hazards as gaps but still persists", async () => {
     const repo = new InMemorySiteRepository();
     const dd = await intakeSite("300 S 4th St", {

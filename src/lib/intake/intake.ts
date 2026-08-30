@@ -86,6 +86,66 @@ function hazardOf(
 }
 
 /**
+ * Run a provider call, degrading a THROWN transport/source failure to an
+ * `Unresolved` rather than letting it abort the whole intake. A data source
+ * that cannot be reached (timeout, 5xx, DNS) is a transient gap — approval-
+ * blocking like any unresolved value, but explicitly a source failure to retry,
+ * never a fabricated result and never a 500 that loses every other fact. The
+ * pipeline's promise (README-US: missing evidence is visible product state) has
+ * to hold for an unreachable source, not just a source that returns "no data".
+ */
+async function attemptOr<R>(
+  run: () => Promise<R>,
+  onError: (message: string) => R,
+): Promise<R> {
+  try {
+    return await run();
+  } catch (cause) {
+    return onError(cause instanceof Error ? cause.message : String(cause));
+  }
+}
+
+/** An Unresolved marking a data source that could not be reached this run. */
+function sourceUnreachable(
+  subject: string,
+  owner: string,
+  message: string,
+): Unresolved {
+  return unresolved(
+    subject,
+    owner,
+    `The ${subject} data source could not be reached (${message}); this is a ` +
+      `transient source failure, not a resolved value — retry, or resolve it ` +
+      `manually before relying on this parcel.`,
+  );
+}
+
+/**
+ * A fully-unresolved by-right envelope, used when the zoning source itself
+ * throws. Keeps the report shape intact (every field an honest gap) instead of
+ * losing the whole analysis to one unreachable layer.
+ */
+function unreachableEnvelope(
+  jurisdictionId: string,
+  message: string,
+): ByRightEnvelope {
+  const gap = (subject: string): Unresolved =>
+    sourceUnreachable(subject, "local zoning professional", message);
+  return {
+    jurisdictionId,
+    zoningDistrict: gap("zoning district"),
+    allowedUses: gap("allowed uses"),
+    maxFar: gap("maximum floor area ratio"),
+    maxLotCoverage: gap("maximum lot coverage"),
+    maxHeight: gap("maximum height"),
+    minSetbacks: gap("minimum setbacks (front/side/rear)"),
+    minParkingStalls: gap("minimum parking stalls"),
+    overlays: [gap("overlay districts")],
+    discretionaryApprovals: [gap("discretionary approvals / special reviews")],
+  };
+}
+
+/**
  * Resolve the parcel, preferring the authoritative address match over the
  * interpolated geocoder point. Falls back to the point when the provider has no
  * `byAddress` or the address match doesn't resolve — never guesses a parcel.
@@ -127,7 +187,11 @@ export async function intakeSite(
   const { profile, repository } = deps;
 
   // 1. Normalize the address. Without it there is no point to proceed from.
-  const address = await profile.addressProvider.normalize(rawAddress);
+  //    A thrown source failure degrades to Unresolved, not a crash.
+  const address = await attemptOr(
+    () => profile.addressProvider.normalize(rawAddress),
+    (m) => sourceUnreachable("address", "user", m),
+  );
   if (isUnresolved(address)) {
     return {
       rawAddress,
@@ -140,7 +204,10 @@ export async function intakeSite(
   // 2. Resolve the parcel. Prefer an authoritative address-attribute match
   //    (robust to the geocoder's point offset); fall back to the point only
   //    when the address match is unavailable or doesn't resolve.
-  const parcel = await resolveParcel(profile, address.value);
+  const parcel = await attemptOr(
+    () => resolveParcel(profile, address.value),
+    (m) => sourceUnreachable("parcel", "user", m),
+  );
   if (isUnresolved(parcel)) {
     return {
       rawAddress,
@@ -168,19 +235,24 @@ export async function intakeSite(
   const floodProvider = hazardOf(profile, "flood");
   const flood: Evidence<FloodHazard> | Unresolved =
     geometry && floodProvider?.flood
-      ? await floodProvider.flood(geometry)
+      ? await attemptOr(
+          () => floodProvider.flood!(geometry),
+          (m) => sourceUnreachable("flood hazard", "surveyor", m),
+        )
       : noGeometry("flood hazard");
 
   const terrainProvider = hazardOf(profile, "terrain");
   const terrain: Evidence<TerrainSummary> | Unresolved =
     geometry && terrainProvider?.terrain
-      ? await terrainProvider.terrain(geometry)
+      ? await attemptOr(
+          () => terrainProvider.terrain!(geometry),
+          (m) => sourceUnreachable("terrain", "surveyor", m),
+        )
       : noGeometry("terrain");
 
-  const zoning = await profile.zoningProvider.envelopeFor(
-    parcel.identity,
-    geometry,
-    opts.intent,
+  const zoning = await attemptOr(
+    () => profile.zoningProvider.envelopeFor(parcel.identity, geometry, opts.intent),
+    (m) => unreachableEnvelope(profile.jurisdictionId, m),
   );
 
   // 4. Persist the site under its UUID (APN kept as a source record).
