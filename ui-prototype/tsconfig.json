@@ -19,7 +19,8 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "decimal.js": ["./node_modules/decimal.js"]
     }
   },
   "include": [

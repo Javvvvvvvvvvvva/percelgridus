@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "node:path";
 
 const nextConfig: NextConfig = {
   // Allow importing the PARCELGRID library from ../../src/lib (outside app dir).
@@ -13,6 +14,16 @@ const nextConfig: NextConfig = {
       ".js": [".ts", ".tsx", ".js"],
       ".mjs": [".mts", ".mjs"],
     };
+    // The library (../../src/lib) imports runtime deps like `decimal.js`. Those
+    // files live outside this app, so webpack would only find such deps in the
+    // repo ROOT node_modules (i.e. a root install is required). Adding this
+    // app's own node_modules as an absolute resolve root makes the library's
+    // deps resolve from `ui-prototype/node_modules` too — so a fresh clone works
+    // with just `cd ui-prototype && npm install && npm run dev`, no root install.
+    config.resolve.modules = [
+      path.resolve(__dirname, "node_modules"),
+      "node_modules",
+    ];
     return config;
   },
 };
