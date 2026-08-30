@@ -6,52 +6,39 @@ import type { FeatureCollection, Geometry } from "geojson";
 
 const VIEWBOX_WIDTH = 1200;
 const VIEWBOX_HEIGHT = 750;
-const MN_ZOOM_SCALE = 1.7;
 
-export type StatePath = { d: string; isFocus: boolean };
+/** One rendered state: its name and the SVG path for the Albers-USA projection. */
+export type StateShape = { name: string; d: string };
 
-export type UsMapData = {
-  /** All 50 states + DC, undifferentiated fill — for the plain map panel. */
-  states: { d: string }[];
-  /** Same geometry, with the focus state flagged for a highlight fill. */
-  statesFocus: StatePath[];
-  /** SVG transform centering + zooming on the focus state's centroid. */
-  focusTransform: string;
-};
+/**
+ * Project the 50 states + DC into SVG paths tagged with their name, so an
+ * interactive map can identify which state is hovered or clicked. Runs on the
+ * server (the topojson is heavy); only the light path strings + names are sent
+ * to the client component.
+ */
+export function buildUsMapData(): { states: StateShape[] } {
+  const topology = statesTopology as unknown as Topology<{
+    states: GeometryCollection;
+  }>;
+  const collection = feature(
+    topology,
+    topology.objects.states,
+  ) as unknown as FeatureCollection<Geometry>;
 
-export function buildUsMapData(focusStateName: string): UsMapData {
-  const topology = statesTopology as unknown as Topology<{ states: GeometryCollection }>;
-  const collection = feature(topology, topology.objects.states) as unknown as FeatureCollection<Geometry>;
-
-  const projection = geoAlbersUsa().fitSize([VIEWBOX_WIDTH, VIEWBOX_HEIGHT], collection);
+  const projection = geoAlbersUsa().fitSize(
+    [VIEWBOX_WIDTH, VIEWBOX_HEIGHT],
+    collection,
+  );
   const path = geoPath(projection);
 
-  const states: { d: string }[] = [];
-  const statesFocus: StatePath[] = [];
-  let focusCentroid: [number, number] = [VIEWBOX_WIDTH / 2, VIEWBOX_HEIGHT / 2];
-
+  const states: StateShape[] = [];
   for (const featureItem of collection.features) {
     const d = path(featureItem);
     if (!d) continue;
-    const isFocus = (featureItem.properties as { name?: string } | null)?.name === focusStateName;
-    if (isFocus) {
-      const centroid = path.centroid(featureItem);
-      if (Number.isFinite(centroid[0]) && Number.isFinite(centroid[1])) {
-        focusCentroid = centroid as [number, number];
-      }
-    }
-    states.push({ d });
-    statesFocus.push({ d, isFocus });
+    const name = (featureItem.properties as { name?: string } | null)?.name ?? "";
+    states.push({ name, d });
   }
-
-  const tx = VIEWBOX_WIDTH / 2 - MN_ZOOM_SCALE * focusCentroid[0];
-  const ty = VIEWBOX_HEIGHT / 2 - MN_ZOOM_SCALE * focusCentroid[1];
-
-  return {
-    states,
-    statesFocus,
-    focusTransform: `translate(${tx.toFixed(1)},${ty.toFixed(1)}) scale(${MN_ZOOM_SCALE})`,
-  };
+  return { states };
 }
 
 export const MAP_VIEWBOX = `0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`;
