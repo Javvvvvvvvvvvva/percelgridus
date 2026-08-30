@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Header } from "@/components/header";
 import { Badge } from "@/components/badge";
 import { subjectParcel, recentLookups } from "@/lib/mock-data";
-import { PRO_FORMA_DEFAULTS } from "@/lib/financials";
+import { PRO_FORMA_DEFAULTS } from "@/lib/proforma-live";
 
 type Scenario = "current" | "redev";
 

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Header } from "@/components/header";
 import { Badge } from "@/components/badge";
-import { computeProForma, money } from "@/lib/financials";
+import { runLiveProForma, money } from "@/lib/proforma-live";
 import type {
   ParcelSummary,
   EnvelopeSummary,
@@ -29,20 +29,44 @@ export default function ProFormaClient({
   const [cap, setCap] = useState(seed.exitCapRatePct);
   const acquisitionPrice = seed.acquisitionPrice;
 
+  // Run the REAL library engine (src/lib/finance) on each slider change — the
+  // same decimal-exact math as the server report, not a UI copy.
   const result = useMemo(
     () =>
-      computeProForma({
+      runLiveProForma({
+        lotAreaSf: seed.lotAreaSf ?? 0,
+        maxFar: seed.maxFar ?? 0,
+        maxLotCoverage: seed.maxLotCoverage ?? 0,
+        avgUnitGsf: seed.avgUnitGsf,
+        softCostPct: seed.softCostPct,
+        contingencyPct: seed.contingencyPct,
+        vacancyPct: seed.vacancyPct,
+        annualOpexPerUnit: seed.annualOpexPerUnit,
         acquisitionPrice,
         rentPerUnitMonth: rent,
         hardCostPerGsf: psf,
         exitCapRatePct: cap,
-        buildableGsf: seed.buildableGsf ?? undefined,
-        units: seed.units ?? undefined,
       }),
-    [acquisitionPrice, rent, psf, cap],
+    [acquisitionPrice, rent, psf, cap, seed],
   );
 
   const capLabel = `${cap.toFixed(1)}%`;
+  const soft = `${Math.round((seed.softCostPct + seed.contingencyPct) * 100)}% soft+cont`;
+  const noiNote = `${result.units ?? seed.units ?? "—"} units · ${Math.round(seed.vacancyPct * 100)}% vacancy · ${money(seed.annualOpexPerUnit * (result.units ?? seed.units ?? 0))} opex`;
+
+  // Verdict + break-even copy derived from the engine's numbers (presentation).
+  const verdictKicker = result.feasible
+    ? "Preliminary — feasible at this price"
+    : "Preliminary — not feasible at this price";
+  const verdictHeadline =
+    (result.feasible ? "Development profit +" : "Development loss −") + money(result.profit);
+  const verdictSub =
+    `Stabilized value ${money(result.stabilizedValue)} ` +
+    `${result.feasible ? "exceeds" : "is below"} total capital in ${money(result.totalCapitalIn)}. ` +
+    `At ${money(acquisitionPrice)} acquisition you would ${result.feasible ? "clear the cost basis" : "overpay"}.`;
+  const breakevenNote = result.breakevenAchievable
+    ? "Value minus development cost, at zero profit."
+    : `Development cost alone exceeds stabilized value by ${money((result.developmentCost ?? 0) - (result.stabilizedValue ?? 0))}. No acquisition price — including $0 — makes this feasible at these assumptions.`;
 
   return (
     <div className="pg-page">
@@ -52,7 +76,7 @@ export default function ProFormaClient({
 
           <div className="pg-summary-3col" style={{ borderBottom: "1px solid var(--line)", background: "var(--panel)" }}>
             <SummaryCell label="Expected acquisition price" value={money(acquisitionPrice)} badge={{ tone: "purple", label: "USER ASSUMPTION" }} />
-            <SummaryCell label="Total development cost" value={money(result.developmentCost)} badge={{ tone: "gray", label: "ALGORITHM · 32% SOFT" }} />
+            <SummaryCell label="Total development cost" value={money(result.developmentCost)} badge={{ tone: "gray", label: `ALGORITHM · ${soft}` }} />
             <div style={{ padding: "18px 24px", display: "flex", flexDirection: "column", gap: 6, background: "var(--panel2)" }}>
               <CellLabel>Total capital in</CellLabel>
               <div style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 600, fontSize: 26, lineHeight: 1.1, fontVariantNumeric: "tabular-nums", letterSpacing: "-.02em" }}>
@@ -66,8 +90,8 @@ export default function ProFormaClient({
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div className="pg-3col">
                 <StatTile label="Stabilized value" value={money(result.stabilizedValue)} note={`NOI ÷ cap rate ${capLabel}`} />
-                <StatTile label="Stabilized NOI" value={money(result.noi)} note="5 units · 5% vacancy · $32,500 opex" />
-                <StatTile label="Yield on cost" value={`${result.yieldOnCostPct.toFixed(2)}%`} note="NOI ÷ development cost" />
+                <StatTile label="Stabilized NOI" value={money(result.noi)} note={noiNote} />
+                <StatTile label="Yield on cost" value={result.yieldOnCostPct !== null ? `${result.yieldOnCostPct.toFixed(2)}%` : "—"} note="NOI ÷ development cost" />
               </div>
 
               <div
@@ -84,12 +108,12 @@ export default function ProFormaClient({
               >
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
                   <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 600, fontSize: 11, lineHeight: 1, letterSpacing: ".1em", textTransform: "uppercase", opacity: 0.85 }}>
-                    {result.verdictKicker}
+                    {verdictKicker}
                   </div>
                   <div style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 600, fontSize: 26, lineHeight: 1.15, letterSpacing: "-.025em", fontVariantNumeric: "tabular-nums" }}>
-                    {result.verdictHeadline}
+                    {verdictHeadline}
                   </div>
-                  <div style={{ fontFamily: "var(--font-sans), sans-serif", fontSize: 13, lineHeight: 1.5, opacity: 0.9 }}>{result.verdictSub}</div>
+                  <div style={{ fontFamily: "var(--font-sans), sans-serif", fontSize: 13, lineHeight: 1.5, opacity: 0.9 }}>{verdictSub}</div>
                 </div>
               </div>
 
@@ -142,9 +166,9 @@ export default function ProFormaClient({
                       color: result.breakevenAchievable ? "var(--ink)" : "var(--red)",
                     }}
                   >
-                    {result.breakevenAchievable ? money(result.breakevenAcquisitionPrice!) : "Not achievable"}
+                    {result.breakevenAchievable ? money(result.breakevenAcquisitionPrice) : "Not achievable"}
                   </div>
-                  <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.45, color: "var(--ink3)" }}>{result.breakevenNote}</div>
+                  <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.45, color: "var(--ink3)" }}>{breakevenNote}</div>
                 </div>
               </div>
 

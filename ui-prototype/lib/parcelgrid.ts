@@ -85,6 +85,17 @@ export interface ProFormaSeed {
   readonly rentPerUnitMonth: number;
   readonly hardCostPerGsf: number;
   readonly exitCapRatePct: number;
+  // Resolved by-right facts + fixed assumptions the client feeds to the REAL
+  // finance engine (src/lib/finance) so the sliders recompute with the same
+  // decimal-exact math as the report — no separate UI copy of the pro forma.
+  readonly lotAreaSf: number | null;
+  readonly maxFar: number | null;
+  readonly maxLotCoverage: number | null; // fraction 0..1
+  readonly avgUnitGsf: number;
+  readonly softCostPct: number;
+  readonly contingencyPct: number;
+  readonly vacancyPct: number;
+  readonly annualOpexPerUnit: number;
 }
 
 export interface FloodSummary {
@@ -320,6 +331,17 @@ export async function getSiteAnalysis(
       rentPerUnitMonth: a.rentPerUnitMonth,
       hardCostPerGsf: a.hardCostPerGsf,
       exitCapRatePct: a.exitCapRatePct,
+      lotAreaSf: parcelSummary.lotAreaSf,
+      maxFar: parcelSummary.maxFar,
+      maxLotCoverage:
+        parcelSummary.maxLotCoveragePct !== null
+          ? parcelSummary.maxLotCoveragePct / 100
+          : null,
+      avgUnitGsf: a.avgUnitGsf,
+      softCostPct: a.softCostPct,
+      contingencyPct: a.contingencyPct,
+      vacancyPct: a.vacancyPct,
+      annualOpexPerUnit: a.annualOpexPerUnit,
     },
     openItemCount: report.blockers.length,
   };
