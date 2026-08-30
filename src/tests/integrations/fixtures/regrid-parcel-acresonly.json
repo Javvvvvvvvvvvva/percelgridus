@@ -1,0 +1,1 @@
+{"parcels":{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"MultiPolygon","coordinates":[[[[-93.29,44.94],[-93.289,44.94],[-93.289,44.941],[-93.29,44.941],[-93.29,44.94]]]]},"properties":{"fields":{"parcelnumb":"999","owner":"ACRE OWNER  ","ll_gisacre":0.25,"yearbuilt":"0000","parval":0,"saleprice":0}}}]}}

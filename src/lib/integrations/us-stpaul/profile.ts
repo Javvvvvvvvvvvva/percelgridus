@@ -27,6 +27,7 @@ import type {
 } from "../../jurisdiction/index.js";
 import { US_UNIT_PROFILE } from "../../units/index.js";
 
+import { RegridParcelProvider } from "../us-regrid/index.js";
 import { RamseyPendingParcelProvider } from "./pending-parcel.js";
 import { StPaulZoningProvider } from "./zoning.js";
 import type { StPaulZoningConfig } from "./zoning.js";
@@ -60,17 +61,30 @@ const SAINT_PAUL_PENDING_TAX: TaxEstimateProfile = {
 
 export interface StPaulProfileConfig extends UsNationalConfig {
   readonly zoning?: StPaulZoningConfig;
+  /**
+   * A Regrid API token. When present, Saint Paul parcels resolve nationwide via
+   * the Regrid adapter — the drop-in that "breaks the wall" for parcel data the
+   * Ramsey County GIS host does not expose to this environment. When absent, the
+   * parcel adapter stays the honest pending placeholder.
+   */
+  readonly regridToken?: string;
 }
 
 /**
  * Build the Saint Paul profile. The national providers and the live zoning
- * adapter are constructed with the supplied (or default) config; the parcel
- * adapter is the pending Ramsey placeholder.
+ * adapter are constructed with the supplied (or default) config. The parcel
+ * adapter is the Regrid provider when a token is configured, else the pending
+ * Ramsey placeholder — the only line that changes to turn Saint Paul from a
+ * zoning-only jurisdiction into a fully-resolving one.
  */
 export function createStPaulProfile(
   config: StPaulProfileConfig = {},
 ): JurisdictionProfile {
   const national = createUsNationalProviders(config);
+  const parcelProvider =
+    config.regridToken !== undefined && config.regridToken.length > 0
+      ? new RegridParcelProvider({ token: config.regridToken })
+      : new RamseyPendingParcelProvider();
   return {
     countryCode: "US",
     stateCode: "MN",
@@ -79,7 +93,7 @@ export function createStPaulProfile(
 
     units: US_UNIT_PROFILE,
     addressProvider: national.addressProvider,
-    parcelProvider: new RamseyPendingParcelProvider(),
+    parcelProvider,
     zoningProvider: new StPaulZoningProvider(config.zoning),
     hazardProviders: national.hazardProviders,
     financeProfile: SAINT_PAUL_PENDING_FINANCE,
