@@ -27,9 +27,11 @@ import { newUuid } from "../../jurisdiction/identifiers.js";
 import type { ExternalIdentifier, SiteId } from "../../jurisdiction/identifiers.js";
 import type {
   GeoPoint,
+  ParcelCandidate,
   ParcelProvider,
   ParcelRecord,
 } from "../../jurisdiction/providers.js";
+import { HENNEPIN_APN_SYSTEM } from "./parse-parcel.js";
 import type { HennepinParcelResponse } from "./parcel-response.js";
 import {
   parseAddressMatch,
@@ -177,6 +179,67 @@ export class HennepinParcelProvider implements ParcelProvider {
     return parseAddressMatch(body, this.contextFor(url), label);
   }
 
+  /** Build a buffered point query returning parcels within `radiusMeters`. */
+  buildNearbyUrl(point: GeoPoint, radiusMeters: number): string {
+    const params = new URLSearchParams({
+      geometry: `${point.lng},${point.lat}`,
+      geometryType: "esriGeometryPoint",
+      inSR: "4326",
+      outSR: "4326",
+      distance: String(radiusMeters),
+      units: "esriSRUnit_Meter",
+      spatialRel: "esriSpatialRelIntersects",
+      outFields: "PID,PID_TEXT,HOUSE_NO,STREET_NM,MUNIC_NM,ZIP_CD,LAT,LON",
+      returnGeometry: "false",
+      f: "json",
+    });
+    return `${this.baseUrl}?${params.toString()}`;
+  }
+
+  /**
+   * List real parcels near a point as disambiguation suggestions (closest
+   * first). Not a resolution — the caller offers these for a human to confirm.
+   * Returns [] on no match; a transport failure throws like the other lookups.
+   */
+  async nearby(
+    point: GeoPoint,
+    opts: { radiusMeters?: number; max?: number } = {},
+  ): Promise<readonly ParcelCandidate[]> {
+    const radiusMeters = opts.radiusMeters ?? 40;
+    const max = opts.max ?? 6;
+    const url = this.buildNearbyUrl(point, radiusMeters);
+    const body = await this.fetchJson(url, `nearby (${point.lng}, ${point.lat})`);
+    const features = body.features ?? [];
+    const candidates: ParcelCandidate[] = [];
+    for (const feature of features) {
+      const a = feature.attributes;
+      if (a === undefined) continue;
+      const houseNo = a.HOUSE_NO;
+      const street = typeof a.STREET_NM === "string" ? a.STREET_NM.trim() : undefined;
+      if (typeof houseNo !== "number" || street === undefined || street === "") continue;
+      const munic = typeof a.MUNIC_NM === "string" ? a.MUNIC_NM.trim() : undefined;
+      const zip = typeof a.ZIP_CD === "string" ? a.ZIP_CD.trim() : undefined;
+      const pid = typeof a.PID === "string" ? a.PID.trim() : undefined;
+      const distanceMeters = haversineMeters(point, a.LAT, a.LON);
+      // A re-query address that byAddress resolves exactly (house + street +
+      // municipality); include ZIP for the human-readable label only.
+      const cityPart = munic !== undefined ? `, ${munic}` : "";
+      const address = `${houseNo} ${street}${munic !== undefined ? `, ${munic}, MN` : ""}${
+        zip !== undefined ? ` ${zip}` : ""
+      }`;
+      candidates.push({
+        label: `${houseNo} ${street}${cityPart}${zip !== undefined ? ` ${zip}` : ""}`,
+        address,
+        ...(pid !== undefined
+          ? { identifier: { system: HENNEPIN_APN_SYSTEM, value: pid, kind: "PID" } }
+          : {}),
+        distanceMeters,
+      });
+    }
+    candidates.sort((x, y) => x.distanceMeters - y.distanceMeters);
+    return candidates.slice(0, max);
+  }
+
   private contextFor(url: string): {
     siteId: SiteId;
     retrievalDate: IsoDate;
@@ -228,6 +291,26 @@ export class HennepinParcelProvider implements ParcelProvider {
 /** Escape a single-quoted ArcGIS SQL literal (double any embedded quote). */
 function escapeSqlLiteral(value: string): string {
   return value.replace(/'/g, "''");
+}
+
+/**
+ * Straight-line distance (metres) from a point to a parcel centroid (LAT/LON),
+ * via the equirectangular approximation — exact enough at the block scale this
+ * is used for, and it degrades to Infinity when the centroid is missing so such
+ * rows sort last rather than crashing.
+ */
+function haversineMeters(
+  point: GeoPoint,
+  lat: number | string | undefined,
+  lon: number | string | undefined,
+): number {
+  const la = typeof lat === "number" ? lat : Number(lat);
+  const lo = typeof lon === "number" ? lon : Number(lon);
+  if (!Number.isFinite(la) || !Number.isFinite(lo)) return Infinity;
+  const metersPerDeg = 111_320;
+  const dy = (la - point.lat) * metersPerDeg;
+  const dx = (lo - point.lng) * metersPerDeg * Math.cos((point.lat * Math.PI) / 180);
+  return Math.round(Math.hypot(dx, dy) * 10) / 10;
 }
 
 function isoDate(d: Date): IsoDate {

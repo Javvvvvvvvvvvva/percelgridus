@@ -93,6 +93,34 @@ export interface ParcelProvider {
    * unparseable. Optional — not every parcel source exposes an address index.
    */
   byAddress?(normalizedAddress: string): Promise<ParcelRecord | Unresolved>;
+  /**
+   * List real parcels near a point, closest first, as disambiguation
+   * SUGGESTIONS — never a resolution. Used when an address doesn't match a
+   * parcel exactly (e.g. a geocoded house number lands between lots, or a
+   * building number that isn't itself a parcel): the app offers the neighbours
+   * for the user to choose, rather than silently snapping to one. Optional.
+   */
+  nearby?(
+    point: GeoPoint,
+    opts?: { radiusMeters?: number; max?: number },
+  ): Promise<readonly ParcelCandidate[]>;
+}
+
+/**
+ * A nearby-parcel suggestion: enough to show the user and to re-query the
+ * chosen one, plus how far its centroid sits from the searched point. This is
+ * explicitly NOT resolved parcel evidence — it is a candidate for a human to
+ * confirm.
+ */
+export interface ParcelCandidate {
+  /** Human label, e.g. "1414 3RD ST S, MINNEAPOLIS 55454". */
+  readonly label: string;
+  /** A re-query address string that resolves this exact parcel via byAddress. */
+  readonly address: string;
+  /** The authority's own identifier (e.g. a Hennepin PID), when available. */
+  readonly identifier?: ExternalIdentifier;
+  /** Straight-line distance from the searched point to the parcel centroid. */
+  readonly distanceMeters: number;
 }
 
 // ─────────────────────────── Zoning evidence ───────────────────────────

@@ -249,9 +249,48 @@ export default async function ReportPage({
                   <div style={{ fontFamily: "var(--font-sans), sans-serif", fontSize: 13, lineHeight: 1.6, color: "var(--ink2)" }}>
                     This is not a network or firewall error — the pipeline reached its sources and
                     found nothing to attach, so it shows nothing rather than inventing a lot area,
-                    zoning, or tax figure. Try a nearby street address, or confirm the parcel on the
-                    Hennepin County parcel viewer.
+                    zoning, or tax figure.
+                    {sa.candidates.length
+                      ? " The address you entered isn't itself a parcel; the closest real parcels are below — pick one to analyze it."
+                      : " Try a nearby street address, or confirm the parcel on the Hennepin County parcel viewer."}
                   </div>
+
+                  {sa.candidates.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+                      <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 500, fontSize: 10, lineHeight: 1, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink3)" }}>
+                        Nearby parcels
+                      </div>
+                      {sa.candidates.map((c) => (
+                        <Link
+                          key={c.label + c.distanceMeters}
+                          href={`/report?scenario=${scenario ?? "redev"}&address=${encodeURIComponent(c.address)}`}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 12,
+                            background: "var(--panel2)",
+                            border: "1px solid var(--line)",
+                            borderRadius: 8,
+                            padding: "12px 14px",
+                            color: "inherit",
+                            textDecoration: "none",
+                          }}
+                        >
+                          <span style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 500, fontSize: 14, lineHeight: 1.3 }}>
+                            {c.label}
+                          </span>
+                          <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1, color: "var(--ink3)", whiteSpace: "nowrap" }}>
+                              {Math.round(c.distanceMeters)} m away
+                            </span>
+                            <span aria-hidden style={{ color: "var(--blue)", fontWeight: 600 }}>→</span>
+                          </span>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+
                   <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginTop: 2 }}>
                     <Badge tone="orange">UNRESOLVED</Badge>
                     <Badge tone="blue">SOURCES REACHED</Badge>

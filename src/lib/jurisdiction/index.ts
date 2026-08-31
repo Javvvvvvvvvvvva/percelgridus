@@ -43,6 +43,7 @@ export type {
   AddressProvider,
   ParcelRecord,
   ParcelProvider,
+  ParcelCandidate,
   ByRightEnvelope,
   ZoningEvidenceProvider,
   DevelopmentIntent,

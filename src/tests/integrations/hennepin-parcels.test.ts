@@ -311,3 +311,84 @@ describe("HennepinParcelProvider", () => {
     ).rejects.toBeInstanceOf(HennepinParcelError);
   });
 });
+
+describe("HennepinParcelProvider.nearby", () => {
+  // The geocoded point for "1412 S 3rd St" (which is not itself a parcel).
+  const POINT = { lng: -93.249237581048, lat: 44.972481680043 };
+
+  const nearbyBody: HennepinParcelResponse = {
+    features: [
+      {
+        // 1500 is farther up the block than 1414.
+        attributes: {
+          PID: "2702924430010",
+          HOUSE_NO: 1500,
+          STREET_NM: "3RD ST S            ",
+          MUNIC_NM: "MINNEAPOLIS         ",
+          ZIP_CD: "55454",
+          LAT: 44.972_9,
+          LON: -93.249_1,
+        },
+      },
+      {
+        attributes: {
+          PID: "2702924430020",
+          HOUSE_NO: 1414,
+          STREET_NM: "3RD ST S            ",
+          MUNIC_NM: "MINNEAPOLIS         ",
+          ZIP_CD: "55454",
+          LAT: 44.972_54,
+          LON: -93.249_0,
+        },
+      },
+    ],
+  };
+
+  it("returns nearby parcels as candidates, closest first, with a re-query address", async () => {
+    let calledUrl = "";
+    const provider = new HennepinParcelProvider({
+      fetchImpl: async (url) => {
+        calledUrl = url;
+        return { ok: true, status: 200, json: async () => nearbyBody };
+      },
+    });
+
+    const candidates = await provider.nearby(POINT, { radiusMeters: 45, max: 6 });
+
+    // The buffered spatial query carries the metre distance and point.
+    expect(decodeURIComponent(calledUrl)).toContain("distance=45");
+    expect(decodeURIComponent(calledUrl)).toContain("units=esriSRUnit_Meter");
+
+    // 1414 is nearer than 1500, so it sorts first — no auto-selection, just order.
+    expect(candidates.map((c) => c.label)).toEqual([
+      "1414 3RD ST S, MINNEAPOLIS 55454",
+      "1500 3RD ST S, MINNEAPOLIS 55454",
+    ]);
+    // The re-query address resolves the exact parcel via byAddress.
+    expect(candidates[0]!.address).toBe("1414 3RD ST S, MINNEAPOLIS, MN 55454");
+    expect(candidates[0]!.identifier).toEqual({
+      system: HENNEPIN_APN_SYSTEM,
+      value: "2702924430020",
+      kind: "PID",
+    });
+    expect(candidates[0]!.distanceMeters).toBeLessThan(candidates[1]!.distanceMeters);
+  });
+
+  it("caps the list and drops rows with no house number or centroid", async () => {
+    const provider = new HennepinParcelProvider({
+      fetchImpl: async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          features: [
+            { attributes: { HOUSE_NO: 1414, STREET_NM: "3RD ST S", MUNIC_NM: "MINNEAPOLIS", LAT: 44.9725, LON: -93.249 } },
+            { attributes: { STREET_NM: "NO NUMBER RD", LAT: 44.97, LON: -93.25 } }, // dropped: no house no.
+          ],
+        }),
+      }),
+    });
+    const candidates = await provider.nearby(POINT, { max: 1 });
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]!.label).toContain("1414");
+  });
+});

@@ -129,6 +129,15 @@ export interface SiteAnalysis {
   readonly allowedUses: readonly string[] | null;
   /** Why the parcel could not be resolved, when it wasn't (honest, not fabricated). */
   readonly unresolvedReason: string | null;
+  /** Nearby real parcels to disambiguate an unresolved address (closest first). */
+  readonly candidates: readonly ParcelCandidateUi[];
+}
+
+/** A nearby-parcel suggestion for the UI (address to re-query + how far). */
+export interface ParcelCandidateUi {
+  readonly label: string;
+  readonly address: string;
+  readonly distanceMeters: number;
 }
 
 /** Assumptions the user drives; the library treats these as user-input evidence. */
@@ -335,6 +344,7 @@ export async function getSiteAnalysis(
   // If the parcel didn't resolve, carry the honest reason (geocode vs. no parcel
   // at the point vs. source unreachable) instead of rendering a blank template.
   let unresolvedReason: string | null = null;
+  let candidates: readonly ParcelCandidateUi[] = [];
   if (!parcelResolved) {
     if (dd.address !== undefined && isUnresolved(dd.address)) {
       unresolvedReason = dd.address.requiredAction ?? "The address could not be resolved.";
@@ -342,6 +352,24 @@ export async function getSiteAnalysis(
       unresolvedReason = dd.parcel.requiredAction ?? "No parcel was found for this address.";
     } else {
       unresolvedReason = "The parcel could not be resolved for this address.";
+    }
+    // Offer nearby real parcels the user can pick — never auto-snapped. Only
+    // possible when the address geocoded to a point.
+    if (isEvidence(dd.address) && profile.parcelProvider.nearby) {
+      try {
+        const near = await profile.parcelProvider.nearby(dd.address.value.point, {
+          radiusMeters: 45,
+          max: 6,
+        });
+        candidates = near.map((c) => ({
+          label: c.label,
+          address: c.address,
+          distanceMeters: c.distanceMeters,
+        }));
+      } catch {
+        // A nearby-search failure is non-fatal; leave the list empty.
+        candidates = [];
+      }
     }
   }
 
@@ -358,6 +386,7 @@ export async function getSiteAnalysis(
     parcelGeometry,
     allowedUses,
     unresolvedReason,
+    candidates,
     proFormaSeed: {
       buildableGsf,
       units,
