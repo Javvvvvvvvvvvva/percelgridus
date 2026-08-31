@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Header } from "@/components/header";
 import { Badge } from "@/components/badge";
 import { ParcelMap } from "@/components/parcel-map";
+import { MassingModel3D } from "@/components/massing-3d";
 import { getSiteAnalysis } from "@/lib/parcelgrid";
 
 export default async function EnvelopePage({
@@ -30,17 +31,28 @@ export default async function EnvelopePage({
             <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 8, padding: 20, display: "flex", flexDirection: "column", gap: 14 }}>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
                 <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 600, fontSize: 12, lineHeight: 1, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink3)" }}>
-                  Site diagram — by-right envelope
+                  Site model — by-right envelope
                 </div>
                 <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1, color: "var(--ink3)" }}>
-                  Real boundary · footprint schematic
+                  Real footprint · schematic height
                 </div>
               </div>
 
+              <MassingModel3D
+                rings={sa.parcelGeometry}
+                coverageFraction={subjectParcel.maxLotCoveragePct !== null ? subjectParcel.maxLotCoveragePct / 100 : null}
+                heightFt={envelope.maxHeightFt}
+                stories={envelope.maxHeightFt ? Math.max(1, Math.round(envelope.maxHeightFt / 14)) : 3}
+                floodLabel={floodLabel}
+                address={subjectParcel.address}
+                heightPx={360}
+              />
+
+              {/* The real lot outline in plan, for footprint context. */}
               <ParcelMap
                 rings={sa.parcelGeometry}
                 lotAreaSf={subjectParcel.lotAreaSf}
-                floodLabel={floodLabel}
+                floodLabel={null}
                 overlayLabel={overlayLabel}
                 address={subjectParcel.address}
                 footprintFraction={subjectParcel.maxLotCoveragePct !== null ? subjectParcel.maxLotCoveragePct / 100 : null}
@@ -49,7 +61,8 @@ export default async function EnvelopePage({
                     ? `${envelope.maxFootprintSf.toLocaleString("en-US")} sf`
                     : undefined
                 }
-                heightPx={360}
+                heightPx={240}
+                compact
               />
 
               {/* Height cap / stories — a plan view can't show elevation, so state it. */}

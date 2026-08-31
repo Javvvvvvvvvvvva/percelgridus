@@ -49,6 +49,8 @@ export interface AssessmentSummary {
   readonly yearBuilt: number | null;
   /** Formatted USD, e.g. "$3,658,000.00". */
   readonly assessedValue: string | null;
+  /** Numeric assessor total market value (whole USD), for comparisons. */
+  readonly assessedValueNum: number | null;
   readonly annualPropertyTax: string | null;
   /** Current effective rate as a percent, e.g. 1.89. Current assessment only. */
   readonly effectiveTaxRatePct: number | null;
@@ -317,6 +319,9 @@ export async function getSiteAnalysis(
           : null,
       assessedValue: isEvidence(tax.assessedValue)
         ? tax.assessedValue.value.format()
+        : null,
+      assessedValueNum: isEvidence(tax.assessedValue)
+        ? tax.assessedValue.value.toNumber()
         : null,
       annualPropertyTax: isEvidence(tax.annualPropertyTax)
         ? tax.annualPropertyTax.value.format()

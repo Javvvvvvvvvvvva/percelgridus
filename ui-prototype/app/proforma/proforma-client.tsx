@@ -185,6 +185,20 @@ export default function ProFormaClient({
                 </div>
               )}
 
+              {assessment && assessment.assessedValueNum != null && (
+                <ExistingVsRedevelop
+                  assessedValueNum={assessment.assessedValueNum}
+                  assessedValue={assessment.assessedValue}
+                  yearBuilt={assessment.yearBuilt}
+                  annualPropertyTax={assessment.annualPropertyTax}
+                  redevLabel={active?.label ?? "By-right"}
+                  stabilizedValue={result.stabilizedValue}
+                  totalCapitalIn={result.totalCapitalIn}
+                  profit={result.profit}
+                  feasible={result.feasible}
+                />
+              )}
+
               <div className="pg-3col">
                 <StatTile label="Stabilized value" value={money(result.stabilizedValue)} note={`NOI ÷ cap rate ${capLabel}`} />
                 <StatTile label="Stabilized NOI" value={money(result.noi)} note={noiNote} />
@@ -441,6 +455,89 @@ function SliderField({
       <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "var(--font-mono), monospace", fontSize: 10, lineHeight: 1, color: "var(--ink3)" }}>
         <span>{minLabel}</span>
         <span>{maxLabel}</span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Keep-the-existing-building vs redevelop, from real assessor facts on the left
+ * and the live pro forma on the right. The two figures use different valuation
+ * bases (assessor market value vs income-capitalized stabilized value), so the
+ * verdict is framed as directional, never a formal appraisal.
+ */
+function ExistingVsRedevelop({
+  assessedValueNum,
+  assessedValue,
+  yearBuilt,
+  annualPropertyTax,
+  redevLabel,
+  stabilizedValue,
+  totalCapitalIn,
+  profit,
+  feasible,
+}: {
+  assessedValueNum: number;
+  assessedValue: string | null;
+  yearBuilt: number | null;
+  annualPropertyTax: string | null;
+  redevLabel: string;
+  stabilizedValue: number | null;
+  totalCapitalIn: number | null;
+  profit: number | null;
+  feasible: boolean;
+}) {
+  const redevVal = stabilizedValue ?? 0;
+  const diff = assessedValueNum - redevVal;
+  const keepWins = diff > 0;
+  const verdict = keepWins
+    ? `Keeping the existing building holds a ${money(assessedValueNum)} assessed asset — ${money(diff)} above what a by-right ${redevLabel.toLowerCase()} redevelopment stabilizes at (${money(redevVal)}). Redevelopment does not pencil here.`
+    : `A by-right ${redevLabel.toLowerCase()} redevelopment stabilizes at ${money(redevVal)}, ${money(-diff)} above the existing ${money(assessedValueNum)} assessed value.`;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 600, fontSize: 12, lineHeight: 1, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink3)" }}>
+        Existing vs redevelopment
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div style={{ background: "var(--panel)", border: `1px solid ${keepWins ? "var(--green)" : "var(--line)"}`, borderRadius: 8, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 7 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+            <span style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 600, fontSize: 14 }}>Keep existing</span>
+            {keepWins ? <Badge tone="green">HIGHER VALUE</Badge> : null}
+          </div>
+          <div style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 600, fontSize: 24, lineHeight: 1.05, letterSpacing: "-.02em", fontVariantNumeric: "tabular-nums" }}>
+            {assessedValue ?? money(assessedValueNum)}
+          </div>
+          <Badge tone="blue">OFFICIAL · VERIFIED</Badge>
+          <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.5, color: "var(--ink3)" }}>
+            Assessor market value{yearBuilt ? ` · built ${yearBuilt}` : ""}
+            {annualPropertyTax ? ` · tax ${annualPropertyTax}/yr` : ""}. No construction.
+          </div>
+        </div>
+
+        <div style={{ background: "var(--panel)", border: `1px solid ${!keepWins ? "var(--green)" : "var(--line)"}`, borderRadius: 8, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 7 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+            <span style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 600, fontSize: 14 }}>Redevelop</span>
+            {!keepWins ? <Badge tone="green">HIGHER VALUE</Badge> : null}
+          </div>
+          <div style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 600, fontSize: 24, lineHeight: 1.05, letterSpacing: "-.02em", fontVariantNumeric: "tabular-nums" }}>
+            {money(redevVal)}
+          </div>
+          <Badge tone="gray">ALGORITHM · STABILIZED</Badge>
+          <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.5, color: "var(--ink3)" }}>
+            {redevLabel} · capital in {money(totalCapitalIn)} ·{" "}
+            <span style={{ color: feasible ? "var(--green)" : "var(--red)" }}>
+              {feasible ? "+" : "−"}
+              {money(profit)}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div style={{ background: keepWins ? "var(--green-bg)" : "var(--blue-bg)", border: `1px solid ${keepWins ? "var(--green)" : "var(--blue)"}`, borderRadius: 8, padding: "12px 14px", fontFamily: "var(--font-sans), sans-serif", fontSize: 12, lineHeight: 1.5, color: keepWins ? "var(--green)" : "var(--blue)" }}>
+        {verdict}
+      </div>
+      <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, lineHeight: 1.5, color: "var(--ink3)" }}>
+        Assessor market value and income-capitalized stabilized value are different bases — directional, not a formal appraisal.
       </div>
     </div>
   );
