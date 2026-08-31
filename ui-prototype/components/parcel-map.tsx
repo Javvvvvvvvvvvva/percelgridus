@@ -5,6 +5,10 @@ import { Badge } from "@/components/badge";
  * WGS84 rings) as a projected site plan. No basemap tiles (those need a tile
  * provider + key at deploy); this draws the actual lot shape, oriented north-up,
  * with a scale bar and the flood/overlay context as chips — honest and offline.
+ *
+ * Optionally overlays the by-right max footprint (the lot polygon scaled toward
+ * its centroid so the drawn area is the coverage fraction of the lot) — a
+ * schematic, clearly labelled, used by the envelope screen.
  */
 export function ParcelMap({
   rings,
@@ -12,18 +16,32 @@ export function ParcelMap({
   floodLabel,
   overlayLabel,
   address,
+  footprintFraction = null,
+  footprintLabel,
+  heightPx = 320,
+  compact = false,
 }: {
   rings: number[][][] | null;
   lotAreaSf: number | null;
   floodLabel: string | null;
   overlayLabel: string | null;
   address: string;
+  /** 0..1 — when set, draws an inset footprint covering this fraction of the lot. */
+  footprintFraction?: number | null;
+  footprintLabel?: string;
+  heightPx?: number;
+  /** Smaller chrome (no scale bar/north arrow) for use as a context thumbnail. */
+  compact?: boolean;
 }) {
   const W = 440;
-  const H = 320;
-  const PAD = 34;
+  const H = heightPx;
+  const PAD = compact ? 20 : 34;
 
   const projected = rings ? projectRings(rings, W, H, PAD) : null;
+  const footprintPaths =
+    projected && footprintFraction && footprintFraction > 0
+      ? scaleRingsToCentroid(projected.points, Math.sqrt(footprintFraction))
+      : null;
 
   return (
     <div
@@ -38,8 +56,8 @@ export function ParcelMap({
       <div
         style={{
           position: "absolute",
-          top: 12,
-          left: 14,
+          top: compact ? 8 : 12,
+          left: compact ? 10 : 14,
           display: "flex",
           gap: 6,
           flexWrap: "wrap",
@@ -69,26 +87,59 @@ export function ParcelMap({
               <path
                 key={i}
                 d={d}
-                fill="var(--blue-bg)"
-                stroke="var(--blue)"
-                strokeWidth={2}
+                fill={footprintPaths ? "none" : "var(--blue-bg)"}
+                stroke="var(--ink2)"
+                strokeWidth={footprintPaths ? 2 : 2}
                 strokeLinejoin="round"
               />
             ))}
-            {/* North arrow */}
-            <g transform={`translate(${W - 30}, 34)`}>
-              <path d="M0 -14 L5 6 L0 1 L-5 6 Z" fill="var(--ink2)" />
-              <text y={20} textAnchor="middle" fontSize={11} fill="var(--ink3)" fontFamily="var(--font-mono), monospace">N</text>
-            </g>
-            {/* Scale bar */}
-            <g transform={`translate(${PAD}, ${H - 20})`}>
-              <line x1={0} y1={0} x2={projected.scaleBarPx} y2={0} stroke="var(--ink2)" strokeWidth={2} />
-              <line x1={0} y1={-4} x2={0} y2={4} stroke="var(--ink2)" strokeWidth={2} />
-              <line x1={projected.scaleBarPx} y1={-4} x2={projected.scaleBarPx} y2={4} stroke="var(--ink2)" strokeWidth={2} />
-              <text x={projected.scaleBarPx / 2} y={-8} textAnchor="middle" fontSize={10} fill="var(--ink3)" fontFamily="var(--font-mono), monospace">
-                {projected.scaleBarLabel}
-              </text>
-            </g>
+            {footprintPaths ? (
+              <>
+                {/* setback zone (between lot line and footprint) hinted by dash */}
+                {footprintPaths.map((d, i) => (
+                  <path
+                    key={`fp-${i}`}
+                    d={d}
+                    fill="var(--blue-bg)"
+                    stroke="var(--blue)"
+                    strokeWidth={2}
+                    strokeLinejoin="round"
+                  />
+                ))}
+                {footprintLabel ? (
+                  <text
+                    x={W / 2}
+                    y={H / 2}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fontSize={12}
+                    fill="var(--blue)"
+                    fontFamily="var(--font-mono), monospace"
+                    fontWeight={600}
+                  >
+                    {footprintLabel}
+                  </text>
+                ) : null}
+              </>
+            ) : null}
+            {!compact ? (
+              <>
+                {/* North arrow */}
+                <g transform={`translate(${W - 30}, 34)`}>
+                  <path d="M0 -14 L5 6 L0 1 L-5 6 Z" fill="var(--ink2)" />
+                  <text y={20} textAnchor="middle" fontSize={11} fill="var(--ink3)" fontFamily="var(--font-mono), monospace">N</text>
+                </g>
+                {/* Scale bar */}
+                <g transform={`translate(${PAD}, ${H - 20})`}>
+                  <line x1={0} y1={0} x2={projected.scaleBarPx} y2={0} stroke="var(--ink2)" strokeWidth={2} />
+                  <line x1={0} y1={-4} x2={0} y2={4} stroke="var(--ink2)" strokeWidth={2} />
+                  <line x1={projected.scaleBarPx} y1={-4} x2={projected.scaleBarPx} y2={4} stroke="var(--ink2)" strokeWidth={2} />
+                  <text x={projected.scaleBarPx / 2} y={-8} textAnchor="middle" fontSize={10} fill="var(--ink3)" fontFamily="var(--font-mono), monospace">
+                    {projected.scaleBarLabel}
+                  </text>
+                </g>
+              </>
+            ) : null}
           </>
         ) : (
           <text x={W / 2} y={H / 2} textAnchor="middle" fontSize={13} fill="var(--ink3)" fontFamily="var(--font-mono), monospace">
@@ -97,25 +148,27 @@ export function ParcelMap({
         )}
       </svg>
 
-      <div
-        style={{
-          position: "absolute",
-          bottom: 12,
-          right: 14,
-          fontFamily: "var(--font-mono), monospace",
-          fontSize: 11,
-          lineHeight: 1.3,
-          color: "var(--ink3)",
-          textAlign: "right",
-        }}
-      >
-        {lotAreaSf !== null ? (
-          <div style={{ color: "var(--ink)", fontWeight: 500 }}>
-            {lotAreaSf.toLocaleString("en-US")} sq ft
-          </div>
-        ) : null}
-        <div>Hennepin GIS boundary</div>
-      </div>
+      {!compact ? (
+        <div
+          style={{
+            position: "absolute",
+            bottom: 12,
+            right: 14,
+            fontFamily: "var(--font-mono), monospace",
+            fontSize: 11,
+            lineHeight: 1.3,
+            color: "var(--ink3)",
+            textAlign: "right",
+          }}
+        >
+          {lotAreaSf !== null ? (
+            <div style={{ color: "var(--ink)", fontWeight: 500 }}>
+              {lotAreaSf.toLocaleString("en-US")} sq ft
+            </div>
+          ) : null}
+          <div>Hennepin GIS boundary</div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -143,12 +196,11 @@ function projectRings(rings: number[][][], W: number, H: number, pad: number) {
   const px = (lng: number) => offX + (lng - minLng) * k * scale;
   const py = (lat: number) => offY + (maxLat - lat) * scale; // flip Y
 
-  const paths = rings.map((ring) => {
-    const d = ring
-      .map((p, i) => `${i === 0 ? "M" : "L"}${px(p[0]!).toFixed(1)},${py(p[1]!).toFixed(1)}`)
-      .join(" ");
-    return d + " Z";
-  });
+  // Projected pixel-space rings (reused by the footprint overlay).
+  const points: number[][][] = rings.map((ring) =>
+    ring.map((p) => [px(p[0]!), py(p[1]!)]),
+  );
+  const paths = points.map(ringToPath);
 
   // Scale bar: pick a "nice" round distance close to ~1/4 of the frame width.
   const metersPerDeg = 111_320;
@@ -158,7 +210,32 @@ function projectRings(rings: number[][][], W: number, H: number, pad: number) {
   const scaleBarPx = (nice / worldWmeters) * drawW;
   const scaleBarLabel = nice >= 1 ? `${nice} m` : `${Math.round(nice * 100)} cm`;
 
-  return { paths, scaleBarPx, scaleBarLabel };
+  return { paths, points, scaleBarPx, scaleBarLabel };
+}
+
+/** Scale each ring toward its own centroid by `factor` (0..1) — a schematic footprint. */
+function scaleRingsToCentroid(points: number[][][], factor: number): string[] {
+  return points.map((ring) => {
+    let cx = 0, cy = 0;
+    for (const [x, y] of ring) {
+      cx += x!;
+      cy += y!;
+    }
+    cx /= ring.length;
+    cy /= ring.length;
+    const scaled = ring.map(([x, y]) => [
+      cx + (x! - cx) * factor,
+      cy + (y! - cy) * factor,
+    ]);
+    return ringToPath(scaled);
+  });
+}
+
+function ringToPath(ring: number[][]): string {
+  const d = ring
+    .map((p, i) => `${i === 0 ? "M" : "L"}${p[0]!.toFixed(1)},${p[1]!.toFixed(1)}`)
+    .join(" ");
+  return d + " Z";
 }
 
 /** Round to 1/2/5 × 10^n. */

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Header } from "@/components/header";
 import { Badge } from "@/components/badge";
+import { ParcelMap } from "@/components/parcel-map";
 import { runLiveProForma, money } from "@/lib/proforma-live";
 import type {
   ParcelSummary,
@@ -17,12 +18,18 @@ export default function ProFormaClient({
   seed,
   assessment,
   openItemCount,
+  parcelGeometry,
+  floodLabel,
+  overlayLabel,
 }: {
   parcel: ParcelSummary;
   envelope: EnvelopeSummary;
   seed: ProFormaSeed;
   assessment: AssessmentSummary | null;
   openItemCount: number;
+  parcelGeometry: number[][][] | null;
+  floodLabel: string | null;
+  overlayLabel: string | null;
 }) {
   const [rent, setRent] = useState(seed.rentPerUnitMonth);
   const [psf, setPsf] = useState(seed.hardCostPerGsf);
@@ -141,6 +148,23 @@ export default function ProFormaClient({
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <ParcelMap
+                  rings={parcelGeometry}
+                  lotAreaSf={parcel.lotAreaSf}
+                  floodLabel={floodLabel}
+                  overlayLabel={overlayLabel}
+                  address={parcel.address}
+                  footprintFraction={parcel.maxLotCoveragePct !== null ? parcel.maxLotCoveragePct / 100 : null}
+                  footprintLabel={parcel.maxLotCoveragePct !== null ? `${parcel.maxLotCoveragePct}% footprint` : undefined}
+                  heightPx={220}
+                  compact
+                />
+                <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.4, color: "var(--ink3)" }}>
+                  {parcel.address} · {parcel.zoningDistrict ?? "—"} · {(parcel.lotAreaSf ?? 0).toLocaleString("en-US")} sq ft · shaded = by-right max footprint
+                </div>
+              </div>
+
               <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 8, padding: 18, display: "flex", flexDirection: "column", gap: 20 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 600, fontSize: 12, lineHeight: 1, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink3)" }}>

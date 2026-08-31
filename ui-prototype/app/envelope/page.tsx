@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Header } from "@/components/header";
 import { Badge } from "@/components/badge";
+import { ParcelMap } from "@/components/parcel-map";
 import { getSiteAnalysis } from "@/lib/parcelgrid";
 
 export default async function EnvelopePage({
@@ -12,6 +13,13 @@ export default async function EnvelopePage({
   const sa = await getSiteAnalysis(address);
   const subjectParcel = sa.parcel;
   const envelope = sa.envelope;
+  const floodLabel = sa.flood
+    ? sa.flood.inSfha
+      ? `SFHA · Zone ${sa.flood.zone}`
+      : `Flood Zone ${sa.flood.zone}`
+    : null;
+  const overlayLabel =
+    sa.overlays.resolved && sa.overlays.names.length ? sa.overlays.names.join(" · ") : null;
   return (
     <div className="pg-page">
       <div className="pg-shell">
@@ -25,73 +33,47 @@ export default async function EnvelopePage({
                   Site diagram — by-right envelope
                 </div>
                 <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1, color: "var(--ink3)" }}>
-                  Schematic · not survey-accurate
+                  Real boundary · footprint schematic
                 </div>
               </div>
 
-              <div style={{ position: "relative", background: "var(--panel2)", borderRadius: 6, padding: 28, display: "grid", placeItems: "center", minHeight: 340 }}>
-                <div style={{ position: "relative", width: 420, maxWidth: "100%", height: 270, border: "2px solid var(--ink2)", borderRadius: 2, background: "var(--panel)" }}>
-                  <div style={{ position: "absolute", top: -22, left: 0, fontFamily: "var(--font-mono), monospace", fontWeight: 500, fontSize: 11, lineHeight: 1, color: "var(--ink2)" }}>
-                    LOT {(subjectParcel.lotAreaSf ?? 0).toLocaleString("en-US")} SF
-                  </div>
-                  <div style={{ position: "absolute", inset: 26, border: "1px dashed var(--orange)", borderRadius: 2 }} />
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 32,
-                      left: 32,
-                      right: 32,
-                      bottom: 32,
-                      background: "var(--blue-bg)",
-                      border: "1.5px solid var(--blue)",
-                      borderRadius: 2,
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 4,
-                    }}
-                  >
-                    <div style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 600, fontSize: 15, lineHeight: 1.2, color: "var(--blue)", fontVariantNumeric: "tabular-nums" }}>
-                      {(envelope.maxFootprintSf ?? 0).toLocaleString("en-US")} sf footprint
-                    </div>
-                    <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 500, fontSize: 11, lineHeight: 1, color: "var(--blue)", opacity: 0.8 }}>
-                      {subjectParcel.maxLotCoveragePct ?? "—"}% LOT COVERAGE
-                    </div>
-                  </div>
-                  <div style={{ position: "absolute", left: 0, right: 0, bottom: -24, display: "flex", justifyContent: "center" }}>
-                    <span style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 500, fontSize: 11, lineHeight: 1, color: "var(--orange)" }}>
-                      SETBACK LINE — UNVERIFIED
-                    </span>
-                  </div>
-                </div>
+              <ParcelMap
+                rings={sa.parcelGeometry}
+                lotAreaSf={subjectParcel.lotAreaSf}
+                floodLabel={floodLabel}
+                overlayLabel={overlayLabel}
+                address={subjectParcel.address}
+                footprintFraction={subjectParcel.maxLotCoveragePct !== null ? subjectParcel.maxLotCoveragePct / 100 : null}
+                footprintLabel={
+                  envelope.maxFootprintSf !== null
+                    ? `${envelope.maxFootprintSf.toLocaleString("en-US")} sf`
+                    : undefined
+                }
+                heightPx={360}
+              />
 
-                <div style={{ position: "absolute", right: 28, top: 28, bottom: 28, width: 96, display: "flex", flexDirection: "column", justifyContent: "flex-end", gap: 6 }}>
-                  <div style={{ display: "flex", flexDirection: "column-reverse", gap: 3 }}>
-                    {["L1", "L2", "L3"].map((level) => (
-                      <div
-                        key={level}
-                        style={{
-                          height: 52,
-                          background: "var(--blue-bg)",
-                          border: "1px solid var(--blue)",
-                          borderRadius: 2,
-                          display: "grid",
-                          placeItems: "center",
-                          fontFamily: "var(--font-mono), monospace",
-                          fontWeight: 500,
-                          fontSize: 10,
-                          lineHeight: 1,
-                          color: "var(--blue)",
-                        }}
-                      >
-                        {level}
-                      </div>
-                    ))}
+              {/* Height cap / stories — a plan view can't show elevation, so state it. */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, background: "var(--panel2)", border: "1px solid var(--line)", borderRadius: 8, padding: "12px 14px" }}>
+                <div style={{ display: "flex", flexDirection: "column-reverse", gap: 2 }}>
+                  {["L1", "L2", "L3"].map((level) => (
+                    <div
+                      key={level}
+                      style={{
+                        width: 34,
+                        height: 12,
+                        background: "var(--blue-bg)",
+                        border: "1px solid var(--blue)",
+                        borderRadius: 2,
+                      }}
+                    />
+                  ))}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  <div style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 600, fontSize: 15, lineHeight: 1.2, color: "var(--ink)" }}>
+                    {envelope.maxHeightFt ?? "—"} ft height cap · ≈ 3 stories
                   </div>
-                  <div style={{ borderTop: "1px solid var(--line2)", paddingTop: 6, fontFamily: "var(--font-mono), monospace", fontWeight: 500, fontSize: 10, lineHeight: 1.3, color: "var(--ink2)", textAlign: "center" }}>
-                    {envelope.maxHeightFt ?? "—"} FT CAP
-                    <br />≈ 3 STORIES
+                  <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.3, color: "var(--ink3)" }}>
+                    §540.410 — machine-parsed · shaded footprint is the by-right maximum
                   </div>
                 </div>
               </div>
@@ -102,12 +84,12 @@ export default async function EnvelopePage({
                   Parcel boundary — official
                 </span>
                 <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ width: 14, height: 0, borderTop: "1px dashed var(--orange)" }} />
-                  Assumed setback — unverified
+                  <span style={{ width: 12, height: 10, background: "var(--blue-bg)", border: "1px solid var(--blue)" }} />
+                  Max footprint — algorithm ({subjectParcel.maxLotCoveragePct ?? "—"}% coverage)
                 </span>
                 <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ width: 12, height: 10, background: "var(--blue-bg)", border: "1px solid var(--blue)" }} />
-                  Max footprint — algorithm
+                  <span style={{ width: 14, height: 0, borderTop: "1px dashed var(--orange)" }} />
+                  Setbacks unresolved — footprint can only shrink
                 </span>
               </div>
             </div>
