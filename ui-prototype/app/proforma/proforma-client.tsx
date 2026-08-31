@@ -10,6 +10,7 @@ import type {
   EnvelopeSummary,
   ProFormaSeed,
   AssessmentSummary,
+  ScenarioSeed,
 } from "@/lib/parcelgrid";
 
 export default function ProFormaClient({
@@ -21,6 +22,7 @@ export default function ProFormaClient({
   parcelGeometry,
   floodLabel,
   overlayLabel,
+  scenarios,
 }: {
   parcel: ParcelSummary;
   envelope: EnvelopeSummary;
@@ -30,31 +32,56 @@ export default function ProFormaClient({
   parcelGeometry: number[][][] | null;
   floodLabel: string | null;
   overlayLabel: string | null;
+  scenarios: readonly ScenarioSeed[];
 }) {
   const [rent, setRent] = useState(seed.rentPerUnitMonth);
   const [psf, setPsf] = useState(seed.hardCostPerGsf);
   const [cap, setCap] = useState(seed.exitCapRatePct);
   const acquisitionPrice = seed.acquisitionPrice;
 
-  // Run the REAL library engine (src/lib/finance) on each slider change — the
-  // same decimal-exact math as the server report, not a UI copy.
+  // Which redevelopment option is detailed below. Default to three-family (the
+  // report's tier) when present, else the last (largest) option.
+  const [selIdx, setSelIdx] = useState(() => {
+    const i = scenarios.findIndex((s) => s.useClass === "three-family");
+    return i >= 0 ? i : Math.max(0, scenarios.length - 1);
+  });
+
+  // Run the REAL library engine (src/lib/finance) for a given option's FAR/
+  // coverage with the shared, slider-driven finance assumptions.
+  const runFor = (s: {
+    maxFar: number | null;
+    maxLotCoveragePct: number | null;
+  }) =>
+    runLiveProForma({
+      lotAreaSf: seed.lotAreaSf ?? 0,
+      maxFar: s.maxFar ?? 0,
+      maxLotCoverage: s.maxLotCoveragePct != null ? s.maxLotCoveragePct / 100 : 0,
+      avgUnitGsf: seed.avgUnitGsf,
+      softCostPct: seed.softCostPct,
+      contingencyPct: seed.contingencyPct,
+      vacancyPct: seed.vacancyPct,
+      annualOpexPerUnit: seed.annualOpexPerUnit,
+      acquisitionPrice,
+      rentPerUnitMonth: rent,
+      hardCostPerGsf: psf,
+      exitCapRatePct: cap,
+    });
+
+  // Every option's feasibility, live with the sliders (same engine, so the
+  // comparison is apples-to-apples).
+  const comparisons = useMemo(
+    () => scenarios.map((s) => ({ scenario: s, out: runFor(s) })),
+    [scenarios, acquisitionPrice, rent, psf, cap, seed],
+  );
+
+  const hasScenarios = scenarios.length > 0;
+  const active = hasScenarios ? scenarios[Math.min(selIdx, scenarios.length - 1)]! : null;
   const result = useMemo(
     () =>
-      runLiveProForma({
-        lotAreaSf: seed.lotAreaSf ?? 0,
-        maxFar: seed.maxFar ?? 0,
-        maxLotCoverage: seed.maxLotCoverage ?? 0,
-        avgUnitGsf: seed.avgUnitGsf,
-        softCostPct: seed.softCostPct,
-        contingencyPct: seed.contingencyPct,
-        vacancyPct: seed.vacancyPct,
-        annualOpexPerUnit: seed.annualOpexPerUnit,
-        acquisitionPrice,
-        rentPerUnitMonth: rent,
-        hardCostPerGsf: psf,
-        exitCapRatePct: cap,
-      }),
-    [acquisitionPrice, rent, psf, cap, seed],
+      runFor(
+        active ?? { maxFar: seed.maxFar, maxLotCoveragePct: seed.maxLotCoverage != null ? seed.maxLotCoverage * 100 : null },
+      ),
+    [active, acquisitionPrice, rent, psf, cap, seed],
   );
 
   const capLabel = `${cap.toFixed(1)}%`;
@@ -74,6 +101,12 @@ export default function ProFormaClient({
   const breakevenNote = result.breakevenAchievable
     ? "Value minus development cost, at zero profit."
     : `Development cost alone exceeds stabilized value by ${money((result.developmentCost ?? 0) - (result.stabilizedValue ?? 0))}. No acquisition price — including $0 — makes this feasible at these assumptions.`;
+
+  // Detail-panel figures follow the selected option when scenarios are present.
+  const dispFar = active?.maxFar ?? parcel.maxFar;
+  const dispBuildable = active?.buildableGsf ?? envelope.buildableGsf;
+  const dispHeight = active?.maxHeightFt ?? envelope.maxHeightFt;
+  const dispCoverage = active?.maxLotCoveragePct ?? parcel.maxLotCoveragePct;
 
   return (
     <div className="pg-page">
@@ -95,6 +128,63 @@ export default function ProFormaClient({
 
           <div className="pg-grid-aside400">
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {hasScenarios && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                    <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 600, fontSize: 12, lineHeight: 1, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink3)" }}>
+                      Redevelopment options — by-right
+                    </div>
+                    <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1, color: "var(--ink3)" }}>
+                      pick one to detail below
+                    </div>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
+                    {comparisons.map(({ scenario, out }, i) => {
+                      const sel = i === Math.min(selIdx, scenarios.length - 1);
+                      return (
+                        <button
+                          key={scenario.useClass}
+                          onClick={() => setSelIdx(i)}
+                          style={{
+                            cursor: "pointer",
+                            textAlign: "left",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 8,
+                            background: sel ? "var(--blue-bg)" : "var(--panel)",
+                            border: `1px solid ${sel ? "var(--blue)" : "var(--line)"}`,
+                            borderRadius: 8,
+                            padding: "13px 15px",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                            <span style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 600, fontSize: 14, lineHeight: 1.2 }}>{scenario.label}</span>
+                            {sel ? <Badge tone="blue">SELECTED</Badge> : null}
+                          </div>
+                          <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.45, color: "var(--ink3)" }}>
+                            FAR {scenario.maxFar ?? "—"} · {scenario.units ?? "—"} units
+                            <br />
+                            {(scenario.buildableGsf ?? 0).toLocaleString("en-US")} GSF
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                            <span style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 600, fontSize: 18, lineHeight: 1.1, letterSpacing: "-.02em", fontVariantNumeric: "tabular-nums", color: out.feasible ? "var(--green)" : "var(--red)" }}>
+                              {out.feasible ? "+" : "−"}
+                              {money(out.profit)}
+                            </span>
+                            <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, lineHeight: 1, letterSpacing: ".05em", color: out.feasible ? "var(--green)" : "var(--red)" }}>
+                              {out.feasible ? "FEASIBLE" : "LOSS"}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.5, color: "var(--ink3)" }}>
+                    Same lot + assumptions; only the ordinance FAR tier (Table 540-2) differs. Move a slider and every option updates.
+                  </div>
+                </div>
+              )}
+
               <div className="pg-3col">
                 <StatTile label="Stabilized value" value={money(result.stabilizedValue)} note={`NOI ÷ cap rate ${capLabel}`} />
                 <StatTile label="Stabilized NOI" value={money(result.noi)} note={noiNote} />
@@ -134,13 +224,13 @@ export default function ProFormaClient({
                 <LineItemRow label="Hard cost per GSF" value={money(psf)} badge={{ tone: "purple", label: "USER ASSUMPTION" }} />
                 <LineItemRow label="Exit cap rate" value={capLabel} badge={{ tone: "purple", label: "USER ASSUMPTION" }} />
                 <LineItemRow
-                  label={`Buildable area — FAR ${parcel.maxFar ?? "—"}`}
-                  value={`${(envelope.buildableGsf ?? 0).toLocaleString("en-US")} GSF`}
+                  label={`Buildable area — FAR ${dispFar ?? "—"}${active ? ` (${active.label})` : ""}`}
+                  value={`${(dispBuildable ?? 0).toLocaleString("en-US")} GSF`}
                   badge={{ tone: "orange", label: "OFFICIAL · UNVERIFIED" }}
                 />
                 <LineItemRow
                   label="Height / coverage caps"
-                  value={`${envelope.maxHeightFt ?? "—"} ft · ${parcel.maxLotCoveragePct ?? "—"}%`}
+                  value={`${dispHeight ?? "—"} ft · ${dispCoverage ?? "—"}%`}
                   badge={{ tone: "orange", label: "OFFICIAL · UNVERIFIED" }}
                   last
                 />

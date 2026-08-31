@@ -131,6 +131,8 @@ export interface SiteAnalysis {
   readonly unresolvedReason: string | null;
   /** Nearby real parcels to disambiguate an unresolved address (closest first). */
   readonly candidates: readonly ParcelCandidateUi[];
+  /** By-right redevelopment options to compare (only when requested). */
+  readonly scenarios: readonly ScenarioSeed[];
 }
 
 /** A nearby-parcel suggestion for the UI (address to re-query + how far). */
@@ -138,6 +140,22 @@ export interface ParcelCandidateUi {
   readonly label: string;
   readonly address: string;
   readonly distanceMeters: number;
+}
+
+/**
+ * One by-right redevelopment option — a permitted dwelling type with its own
+ * ordinance FAR tier (Table 540-2), so the massing differs. The finance inputs
+ * are shared across scenarios; the client runs the real engine per scenario so
+ * they compare apples-to-apples and move with the sliders.
+ */
+export interface ScenarioSeed {
+  readonly useClass: string;
+  readonly label: string;
+  readonly maxFar: number | null;
+  readonly maxLotCoveragePct: number | null;
+  readonly maxHeightFt: number | null;
+  readonly buildableGsf: number | null;
+  readonly units: number | null;
 }
 
 /** Assumptions the user drives; the library treats these as user-input evidence. */
@@ -192,7 +210,7 @@ const DEFAULT_ADDRESS = "2320 Colfax Ave S, Minneapolis, MN 55405";
  */
 export async function getSiteAnalysis(
   address: string = DEFAULT_ADDRESS,
-  opts: { useClass?: string } = {},
+  opts: { useClass?: string; withScenarios?: boolean } = {},
 ): Promise<SiteAnalysis> {
   const a = DEFAULT_ASSUMPTIONS;
   // USGS EPQS (3DEP terrain) can be slow; give it a generous server-side
@@ -373,6 +391,48 @@ export async function getSiteAnalysis(
     }
   }
 
+  // By-right redevelopment options to compare — one per permitted dwelling type,
+  // each with its own ordinance FAR tier (Table 540-2). Only computed on request
+  // (an extra zoning query per option), so report/envelope don't pay the cost.
+  let scenarios: readonly ScenarioSeed[] = [];
+  if (opts.withScenarios && parcel !== undefined && isEvidence(parcel.geometry)) {
+    const geometry = parcel.geometry.value;
+    const USE_CLASSES = [
+      { k: "single-family", label: "Single-family" },
+      { k: "two-family", label: "Two-family" },
+      { k: "three-family", label: "Three-family" },
+    ] as const;
+    const envs = await Promise.all(
+      USE_CLASSES.map((u) =>
+        profile.zoningProvider.envelopeFor(parcel.identity, geometry, { useClass: u.k }),
+      ),
+    );
+    scenarios = USE_CLASSES.map((u, i) => {
+      const z = envs[i]!;
+      const pf = computeProForma({
+        lotArea: lotArea ?? unresolvedArea(),
+        maxFar: z.maxFar,
+        maxLotCoverage: z.maxLotCoverage,
+        finance: financeAssumptions(a),
+        program: {
+          avgUnitGsf: assume(Area.squareFeet(String(a.avgUnitGsf))),
+          monthlyRentPerUnit: assume(Money.usd(String(a.rentPerUnitMonth))),
+          annualOpexPerUnit: assume(Money.usd(String(a.annualOpexPerUnit))),
+        },
+      });
+      const m = buildSiteMassingProgram(lotArea ?? unresolvedArea(), z, pf);
+      return {
+        useClass: u.k,
+        label: u.label,
+        maxFar: num(z.maxFar, (n) => n),
+        maxLotCoveragePct: num(z.maxLotCoverage, (n) => Math.round(n * 100)),
+        maxHeightFt: num(z.maxHeight, (l) => Math.round(l.toFeet())),
+        buildableGsf: num(m.buildableGsf, (ar) => Math.round(ar.toSquareFeet())),
+        units: num(m.estimatedUnits, (n) => n),
+      };
+    });
+  }
+
   return {
     resolved: Boolean(parcelResolved),
     parcel: parcelSummary,
@@ -387,6 +447,7 @@ export async function getSiteAnalysis(
     allowedUses,
     unresolvedReason,
     candidates,
+    scenarios,
     proFormaSeed: {
       buildableGsf,
       units,

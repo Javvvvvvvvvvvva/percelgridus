@@ -9,7 +9,7 @@ export default async function ProFormaPage({
   searchParams: Promise<{ address?: string }>;
 }) {
   const { address } = await searchParams;
-  const sa = await getSiteAnalysis(address);
+  const sa = await getSiteAnalysis(address, { withScenarios: true });
   const floodLabel = sa.flood
     ? sa.flood.inSfha
       ? `SFHA · Zone ${sa.flood.zone}`
@@ -27,6 +27,7 @@ export default async function ProFormaPage({
       parcelGeometry={sa.parcelGeometry}
       floodLabel={floodLabel}
       overlayLabel={overlayLabel}
+      scenarios={sa.scenarios}
     />
   );
 }
