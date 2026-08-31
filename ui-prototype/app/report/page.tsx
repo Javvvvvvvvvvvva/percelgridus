@@ -22,6 +22,7 @@ export default async function ReportPage({
     detail: `Owner: ${g.owner} · ${g.subject}`,
   }));
   const TOTAL_OPEN_ITEMS = sa.openItemCount;
+  const resolved = sa.resolved;
 
   // Map context chips — only shown when actually resolved.
   const floodLabel = sa.flood
@@ -31,6 +32,14 @@ export default async function ReportPage({
     : null;
   const overlayLabel =
     sa.overlays.resolved && sa.overlays.names.length ? sa.overlays.names.join(" · ") : null;
+
+  const bannerHeadline = resolved
+    ? `PRELIMINARY — ${TOTAL_OPEN_ITEMS} open items block approval`
+    : "PARCEL UNRESOLVED — no analysis to show";
+  const bannerSub = resolved
+    ? "Nothing below is a legal maximum. Missing inputs are shown, never inferred."
+    : "The address was located, but no parcel matched. Nothing is inferred in its place.";
+  const bannerTag = resolved ? `${TOTAL_OPEN_ITEMS} BLOCKERS` : "UNRESOLVED";
 
   return (
     <div className="pg-page">
@@ -67,10 +76,10 @@ export default async function ReportPage({
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
               <div style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 600, fontSize: 17, lineHeight: 1.2, color: "var(--orange)", letterSpacing: "-.01em" }}>
-                PRELIMINARY — {TOTAL_OPEN_ITEMS} open items block approval
+                {bannerHeadline}
               </div>
               <div style={{ fontFamily: "var(--font-sans), sans-serif", fontSize: 12, lineHeight: 1.4, color: "var(--ink2)" }}>
-                Nothing below is a legal maximum. Missing inputs are shown, never inferred.
+                {bannerSub}
               </div>
             </div>
             <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
@@ -78,7 +87,7 @@ export default async function ReportPage({
                 SNAPSHOT 2026-08-27
               </div>
               <div style={{ padding: "7px 12px", borderRadius: 6, background: "var(--orange)", color: "var(--panel)", fontFamily: "var(--font-mono), monospace", fontWeight: 600, fontSize: 11, lineHeight: 1, letterSpacing: ".05em" }}>
-                {TOTAL_OPEN_ITEMS} BLOCKERS
+                {bannerTag}
               </div>
             </div>
           </div>
@@ -103,13 +112,24 @@ export default async function ReportPage({
                 </div>
                 <div style={{ display: "flex", gap: 16, fontFamily: "var(--font-mono), monospace", fontSize: 12, lineHeight: 1.5, color: "var(--ink2)", flexWrap: "wrap" }}>
                   <span>APN {subjectParcel.apn ?? "—"}</span>
-                  <span>Owner: {subjectParcel.owner ?? "[on record]"}</span>
+                  <span>Owner: {subjectParcel.owner ?? (resolved ? "[on record]" : "—")}</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <Badge tone="blue">OFFICIAL · VERIFIED</Badge>
-                  <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.4, color: "var(--ink3)" }}>
-                    Hennepin County Assessor parcel record
-                  </span>
+                  {resolved ? (
+                    <>
+                      <Badge tone="blue">OFFICIAL · VERIFIED</Badge>
+                      <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.4, color: "var(--ink3)" }}>
+                        Hennepin County Assessor parcel record
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Badge tone="orange">UNRESOLVED</Badge>
+                      <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.4, color: "var(--ink3)" }}>
+                        No parcel matched this address
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -169,9 +189,9 @@ export default async function ReportPage({
                 </button>
               </div>
 
-              {isRedev && (
+              {isRedev && resolved && (
                 <Link
-                  href="/envelope"
+                  href={`/envelope?address=${encodeURIComponent(subjectParcel.address)}`}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -207,6 +227,37 @@ export default async function ReportPage({
                 </div>
               </div>
 
+              {!resolved ? (
+                <div
+                  style={{
+                    background: "var(--panel)",
+                    border: "1px solid var(--line)",
+                    borderRadius: 8,
+                    padding: "24px 22px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 12,
+                  }}
+                >
+                  <div style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 600, fontSize: 18, lineHeight: 1.25, letterSpacing: "-.01em" }}>
+                    No parcel matched this address
+                  </div>
+                  <div style={{ fontFamily: "var(--font-sans), sans-serif", fontSize: 13, lineHeight: 1.6, color: "var(--ink2)" }}>
+                    {sa.unresolvedReason ??
+                      "The address was located, but no Hennepin County parcel falls on that point."}
+                  </div>
+                  <div style={{ fontFamily: "var(--font-sans), sans-serif", fontSize: 13, lineHeight: 1.6, color: "var(--ink2)" }}>
+                    This is not a network or firewall error — the pipeline reached its sources and
+                    found nothing to attach, so it shows nothing rather than inventing a lot area,
+                    zoning, or tax figure. Try a nearby street address, or confirm the parcel on the
+                    Hennepin County parcel viewer.
+                  </div>
+                  <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginTop: 2 }}>
+                    <Badge tone="orange">UNRESOLVED</Badge>
+                    <Badge tone="blue">SOURCES REACHED</Badge>
+                  </div>
+                </div>
+              ) : (
               <div className="pg-2col">
                 <FactCard
                   label="Lot area"
@@ -250,17 +301,27 @@ export default async function ReportPage({
                   }}
                 >
                   <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 500, fontSize: 10, lineHeight: 1, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink3)" }}>
-                    Permitted uses
+                    Permitted uses (1–3 family)
                   </div>
                   <div style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 500, fontSize: 17, lineHeight: 1.3, letterSpacing: "-.01em" }}>
-                    Single-, two-, three-family dwelling
+                    {sa.allowedUses && sa.allowedUses.length
+                      ? sa.allowedUses
+                          .map((u) => u.replace(/ dwelling$/, ""))
+                          .join(", ") + " dwelling"
+                      : "Unresolved"}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
-                    <Badge tone="blue">OFFICIAL</Badge>
-                    <Badge tone="orange">UNVERIFIED</Badge>
+                    {sa.allowedUses && sa.allowedUses.length ? (
+                      <>
+                        <Badge tone="blue">OFFICIAL</Badge>
+                        <Badge tone="orange">UNVERIFIED</Badge>
+                      </>
+                    ) : (
+                      <Badge tone="orange">UNRESOLVED</Badge>
+                    )}
                   </div>
                   <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.4, color: "var(--ink3)" }}>
-                    City of Minneapolis §545.100 — machine-parsed
+                    City of Minneapolis §545.100 (Table 545-1) — machine-parsed
                   </div>
                 </div>
                 <FactCard
@@ -395,6 +456,7 @@ export default async function ReportPage({
                   </div>
                 </div>
               </div>
+              )}
             </div>
           </div>
 

@@ -125,6 +125,10 @@ export interface SiteAnalysis {
   readonly parking: ParkingSummary | null;
   /** The parcel boundary rings (WGS84 [lng,lat]) for the site map, when resolved. */
   readonly parcelGeometry: number[][][] | null;
+  /** By-right 1–3 family dwelling uses (Table 545-1), when the district resolves them. */
+  readonly allowedUses: readonly string[] | null;
+  /** Why the parcel could not be resolved, when it wasn't (honest, not fabricated). */
+  readonly unresolvedReason: string | null;
 }
 
 /** Assumptions the user drives; the library treats these as user-input evidence. */
@@ -322,6 +326,25 @@ export async function getSiteAnalysis(
         }
       : null;
 
+  // By-right 1–3 family dwelling uses (Table 545-1) — data-driven, never assumed.
+  const allowedUses: readonly string[] | null =
+    zoning && zoning.allowedUses && isEvidence(zoning.allowedUses)
+      ? zoning.allowedUses.value
+      : null;
+
+  // If the parcel didn't resolve, carry the honest reason (geocode vs. no parcel
+  // at the point vs. source unreachable) instead of rendering a blank template.
+  let unresolvedReason: string | null = null;
+  if (!parcelResolved) {
+    if (dd.address !== undefined && isUnresolved(dd.address)) {
+      unresolvedReason = dd.address.requiredAction ?? "The address could not be resolved.";
+    } else if (dd.parcel !== undefined && isUnresolved(dd.parcel)) {
+      unresolvedReason = dd.parcel.requiredAction ?? "No parcel was found for this address.";
+    } else {
+      unresolvedReason = "The parcel could not be resolved for this address.";
+    }
+  }
+
   return {
     resolved: Boolean(parcelResolved),
     parcel: parcelSummary,
@@ -333,6 +356,8 @@ export async function getSiteAnalysis(
     overlays,
     parking,
     parcelGeometry,
+    allowedUses,
+    unresolvedReason,
     proFormaSeed: {
       buildableGsf,
       units,

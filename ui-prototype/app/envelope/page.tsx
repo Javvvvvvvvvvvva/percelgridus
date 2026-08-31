@@ -185,7 +185,7 @@ export default async function EnvelopePage({
               </div>
 
               <Link
-                href="/proforma"
+                href={`/proforma?address=${encodeURIComponent(subjectParcel.address)}`}
                 style={{
                   display: "flex",
                   alignItems: "center",
