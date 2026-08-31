@@ -123,6 +123,8 @@ export interface SiteAnalysis {
   readonly assessment: AssessmentSummary | null;
   readonly overlays: OverlaysSummary;
   readonly parking: ParkingSummary | null;
+  /** The parcel boundary rings (WGS84 [lng,lat]) for the site map, when resolved. */
+  readonly parcelGeometry: number[][][] | null;
 }
 
 /** Assumptions the user drives; the library treats these as user-input evidence. */
@@ -305,6 +307,12 @@ export async function getSiteAnalysis(
     resolved: overlayItems.every(isEvidence),
   };
 
+  // Parcel boundary rings for the site map (WGS84 [lng,lat]).
+  const parcelGeometry: number[][][] | null =
+    parcel && isEvidence(parcel.geometry)
+      ? (parcel.geometry.value as number[][][])
+      : null;
+
   // Minimum off-street parking — Ch. 541 citywide zero.
   const parking: ParkingSummary | null =
     zoning && isEvidence(zoning.minParkingStalls)
@@ -324,6 +332,7 @@ export async function getSiteAnalysis(
     assessment,
     overlays,
     parking,
+    parcelGeometry,
     proFormaSeed: {
       buildableGsf,
       units,

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Header } from "@/components/header";
 import { Badge, LegendSwatch } from "@/components/badge";
 import { FactCard } from "@/components/fact-card";
+import { ParcelMap } from "@/components/parcel-map";
 import { getSiteAnalysis } from "@/lib/parcelgrid";
 
 export default async function ReportPage({
@@ -21,6 +22,15 @@ export default async function ReportPage({
     detail: `Owner: ${g.owner} · ${g.subject}`,
   }));
   const TOTAL_OPEN_ITEMS = sa.openItemCount;
+
+  // Map context chips — only shown when actually resolved.
+  const floodLabel = sa.flood
+    ? sa.flood.inSfha
+      ? `SFHA · Zone ${sa.flood.zone}`
+      : `Flood Zone ${sa.flood.zone}`
+    : null;
+  const overlayLabel =
+    sa.overlays.resolved && sa.overlays.names.length ? sa.overlays.names.join(" · ") : null;
 
   return (
     <div className="pg-page">
@@ -73,7 +83,117 @@ export default async function ReportPage({
             </div>
           </div>
 
-          <div className="pg-grid-aside400">
+          <div className="pg-grid-map">
+            {/* LEFT — real parcel map + subject identity + open items */}
+            <div className="pg-map-col">
+              <ParcelMap
+                rings={sa.parcelGeometry}
+                lotAreaSf={subjectParcel.lotAreaSf}
+                floodLabel={floodLabel}
+                overlayLabel={overlayLabel}
+                address={subjectParcel.address}
+              />
+
+              <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 8, padding: "16px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 500, fontSize: 10, lineHeight: 1, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink3)" }}>
+                  Subject parcel
+                </div>
+                <div style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 600, fontSize: 20, lineHeight: 1.2, letterSpacing: "-.02em" }}>
+                  {subjectParcel.address}
+                </div>
+                <div style={{ display: "flex", gap: 16, fontFamily: "var(--font-mono), monospace", fontSize: 12, lineHeight: 1.5, color: "var(--ink2)", flexWrap: "wrap" }}>
+                  <span>APN {subjectParcel.apn ?? "—"}</span>
+                  <span>Owner: {subjectParcel.owner ?? "[on record]"}</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Badge tone="blue">OFFICIAL · VERIFIED</Badge>
+                  <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.4, color: "var(--ink3)" }}>
+                    Hennepin County Assessor parcel record
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 600, fontSize: 12, lineHeight: 1, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink3)" }}>
+                  Open items
+                </div>
+                <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 600, fontSize: 11, lineHeight: 1, color: "var(--orange)", letterSpacing: ".06em" }}>
+                  BLOCKS APPROVAL
+                </div>
+              </div>
+
+              <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden" }}>
+                {openItems.map((item, i) => (
+                  <div
+                    key={item.title}
+                    style={{
+                      display: "flex",
+                      gap: 12,
+                      padding: "14px 16px",
+                      borderBottom: i < openItems.length - 1 ? "1px solid var(--line)" : undefined,
+                    }}
+                  >
+                    <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 600, fontSize: 12, lineHeight: 1.4, color: "var(--orange)", minWidth: 16 }}>
+                      {String(i + 1).padStart(2, "0")}
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <div style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 500, fontSize: 13, lineHeight: 1.35 }}>{item.title}</div>
+                      <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.5, color: "var(--ink3)" }}>{item.detail}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ background: "var(--panel2)", border: "1px solid var(--line)", borderRadius: 8, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 500, fontSize: 10, lineHeight: 1, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink3)" }}>
+                  Reviewer
+                </div>
+                <div style={{ fontFamily: "var(--font-sans), sans-serif", fontSize: 12, lineHeight: 1.5, color: "var(--ink2)" }}>
+                  No licensed reviewer has signed off on this parcel. Assign one to convert machine-parsed values to verified.
+                </div>
+                <button
+                  style={{
+                    cursor: "pointer",
+                    alignSelf: "flex-start",
+                    border: "1px solid var(--line2)",
+                    background: "var(--panel)",
+                    color: "var(--ink)",
+                    borderRadius: 6,
+                    padding: "9px 14px",
+                    fontFamily: "var(--font-sans), sans-serif",
+                    fontSize: 12,
+                    lineHeight: 1,
+                  }}
+                >
+                  Request review
+                </button>
+              </div>
+
+              {isRedev && (
+                <Link
+                  href="/envelope"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    background: "var(--blue-bg)",
+                    border: "1px solid var(--blue)",
+                    borderRadius: 8,
+                    padding: "14px 16px",
+                    color: "var(--blue)",
+                    textDecoration: "none",
+                    fontFamily: "var(--font-sans), sans-serif",
+                    fontWeight: 600,
+                    fontSize: 13,
+                  }}
+                >
+                  Redevelopment scenario — view maximum build envelope
+                  <span aria-hidden>→</span>
+                </Link>
+              )}
+            </div>
+
+            {/* RIGHT — grounded facts */}
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
                 <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 600, fontSize: 12, lineHeight: 1, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink3)" }}>
@@ -84,26 +204,6 @@ export default async function ReportPage({
                   <LegendSwatch tone="orange" label="UNVERIFIED" />
                   <LegendSwatch tone="gray" label="ALGORITHM" />
                   <LegendSwatch tone="purple" label="USER ASSUMPTION" />
-                </div>
-              </div>
-
-              <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 8, padding: "16px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
-                <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 500, fontSize: 10, lineHeight: 1, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink3)" }}>
-                  Subject parcel
-                </div>
-                <div style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 600, fontSize: 22, lineHeight: 1.2, letterSpacing: "-.02em" }}>
-                  {subjectParcel.address}
-                </div>
-                <div style={{ display: "flex", gap: 20, fontFamily: "var(--font-mono), monospace", fontSize: 12, lineHeight: 1, color: "var(--ink2)", flexWrap: "wrap" }}>
-                  <span>APN {subjectParcel.apn ?? "—"}</span>
-                  <span>Owner: {subjectParcel.owner ?? "[on record]"}</span>
-                  {subjectParcel.ward ? <span>{subjectParcel.ward}</span> : null}
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <Badge tone="blue">OFFICIAL · VERIFIED</Badge>
-                  <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.4, color: "var(--ink3)" }}>
-                    Hennepin County Assessor parcel record
-                  </span>
                 </div>
               </div>
 
@@ -295,87 +395,6 @@ export default async function ReportPage({
                   </div>
                 </div>
               </div>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 600, fontSize: 12, lineHeight: 1, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink3)" }}>
-                  Open items
-                </div>
-                <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 600, fontSize: 11, lineHeight: 1, color: "var(--orange)", letterSpacing: ".06em" }}>
-                  BLOCKS APPROVAL
-                </div>
-              </div>
-
-              <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden" }}>
-                {openItems.map((item, i) => (
-                  <div
-                    key={item.title}
-                    style={{
-                      display: "flex",
-                      gap: 12,
-                      padding: "14px 16px",
-                      borderBottom: i < openItems.length - 1 ? "1px solid var(--line)" : undefined,
-                    }}
-                  >
-                    <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 600, fontSize: 12, lineHeight: 1.4, color: "var(--orange)", minWidth: 16 }}>
-                      {String(i + 1).padStart(2, "0")}
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      <div style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 500, fontSize: 13, lineHeight: 1.35 }}>{item.title}</div>
-                      <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.5, color: "var(--ink3)" }}>{item.detail}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ background: "var(--panel2)", border: "1px solid var(--line)", borderRadius: 8, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
-                <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 500, fontSize: 10, lineHeight: 1, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink3)" }}>
-                  Reviewer
-                </div>
-                <div style={{ fontFamily: "var(--font-sans), sans-serif", fontSize: 12, lineHeight: 1.5, color: "var(--ink2)" }}>
-                  No licensed reviewer has signed off on this parcel. Assign one to convert machine-parsed values to verified.
-                </div>
-                <button
-                  style={{
-                    cursor: "pointer",
-                    alignSelf: "flex-start",
-                    border: "1px solid var(--line2)",
-                    background: "var(--panel)",
-                    color: "var(--ink)",
-                    borderRadius: 6,
-                    padding: "9px 14px",
-                    fontFamily: "var(--font-sans), sans-serif",
-                    fontSize: 12,
-                    lineHeight: 1,
-                  }}
-                >
-                  Request review
-                </button>
-              </div>
-
-              {isRedev && (
-                <Link
-                  href="/envelope"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    background: "var(--blue-bg)",
-                    border: "1px solid var(--blue)",
-                    borderRadius: 8,
-                    padding: "14px 16px",
-                    color: "var(--blue)",
-                    textDecoration: "none",
-                    fontFamily: "var(--font-sans), sans-serif",
-                    fontWeight: 600,
-                    fontSize: 13,
-                  }}
-                >
-                  Redevelopment scenario — view maximum build envelope
-                  <span aria-hidden>→</span>
-                </Link>
-              )}
             </div>
           </div>
 
