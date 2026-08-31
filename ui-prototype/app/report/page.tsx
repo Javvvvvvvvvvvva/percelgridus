@@ -19,7 +19,8 @@ export default async function ReportPage({
   const subjectParcel = { ...sa.parcel, ward: null as string | null, builtForm: null as string | null };
   const openItems = sa.report.gaps.map((g) => ({
     title: g.label,
-    detail: `Owner: ${g.owner} · ${g.subject}`,
+    detail: g.requiredAction || `Owner: ${g.owner} · ${g.subject}`,
+    owner: g.owner,
   }));
   const TOTAL_OPEN_ITEMS = sa.openItemCount;
   const resolved = sa.resolved;
@@ -156,8 +157,13 @@ export default async function ReportPage({
                     <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 600, fontSize: 12, lineHeight: 1.4, color: "var(--orange)", minWidth: 16 }}>
                       {String(i + 1).padStart(2, "0")}
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      <div style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 500, fontSize: 13, lineHeight: 1.35 }}>{item.title}</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <span style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 500, fontSize: 13, lineHeight: 1.35 }}>{item.title}</span>
+                        <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 9, lineHeight: 1, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--ink3)", background: "var(--gray-bg)", border: "1px solid var(--line)", borderRadius: 4, padding: "3px 6px", whiteSpace: "nowrap" }}>
+                          {item.owner}
+                        </span>
+                      </div>
                       <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.5, color: "var(--ink3)" }}>{item.detail}</div>
                     </div>
                   </div>
@@ -166,10 +172,10 @@ export default async function ReportPage({
 
               <div style={{ background: "var(--panel2)", border: "1px solid var(--line)", borderRadius: 8, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
                 <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 500, fontSize: 10, lineHeight: 1, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink3)" }}>
-                  Reviewer
+                  Reviewer — how blockers clear
                 </div>
                 <div style={{ fontFamily: "var(--font-sans), sans-serif", fontSize: 12, lineHeight: 1.5, color: "var(--ink2)" }}>
-                  No licensed reviewer has signed off on this parcel. Assign one to convert machine-parsed values to verified.
+                  Machine-parsed rules carry <strong style={{ color: "var(--orange)", fontWeight: 600 }}>UNVERIFIED</strong> until a licensed reviewer signs off — then they become <strong style={{ color: "var(--blue)", fontWeight: 600 }}>OFFICIAL · VERIFIED</strong>. This holds even when every value is present: approval never opens on data alone.
                 </div>
                 <button
                   style={{

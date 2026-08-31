@@ -20,7 +20,7 @@
  */
 
 import type { IsoDate, SourceRef } from "../../jurisdiction/evidence.js";
-import { officialFact, unresolved } from "../../jurisdiction/evidence.js";
+import { isEvidence, officialFact, unresolved } from "../../jurisdiction/evidence.js";
 import type { Unresolved } from "../../jurisdiction/evidence.js";
 import { createParcelIdentity } from "../../jurisdiction/identifiers.js";
 import type { SiteId } from "../../jurisdiction/identifiers.js";
@@ -228,6 +228,19 @@ export function parseParcelFeature(
   const annualPropertyTax = parseMoneyFact(attrs.TAX_TOT, src);
   const lastSale = parseLastSale(attrs, src);
 
+  // The assessor's year-built tells us whether a structure exists (relevant for a
+  // redevelopment: a standing building means demolition), even though the county
+  // parcel layer carries no footprint polygon. Say which we know and which we don't.
+  const builtYear =
+    yearBuilt !== undefined && isEvidence(yearBuilt) ? yearBuilt.value : undefined;
+  const footprintNote =
+    builtYear !== undefined
+      ? `An existing structure is on record (built ${builtYear}, per the assessor); ` +
+        `its footprint polygon is not in the county parcel layer. Source the footprint ` +
+        `from the municipal building layer or a site survey to size demolition/reuse.`
+      : "The county parcel layer carries no building footprint. Source it from the " +
+        "municipal building layer or a site survey.";
+
   return {
     identity,
     geometry,
@@ -238,7 +251,7 @@ export function parseParcelFeature(
     existingBuildingFootprint: unresolved(
       "existing building footprint",
       "user",
-      "The county parcel layer carries no building footprint. Source it from the municipal building layer or a site survey.",
+      footprintNote,
       { blocksApproval: false },
     ),
     // Optional assessor facts — present only when the source has a usable value.
