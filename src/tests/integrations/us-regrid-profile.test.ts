@@ -14,7 +14,7 @@ const SITE_ID = asUuid("00000000-0000-4000-8000-0000000000aa") as SiteId;
 describe("UnsupportedZoningProvider", () => {
   it("returns every by-right field Unresolved with a 'not yet covered' action", async () => {
     const provider = new UnsupportedZoningProvider({ jurisdictionId: "us-test" });
-    const identity = createParcelIdentity({ siteId: SITE_ID, providerIds: [] });
+    const identity = createParcelIdentity({ siteId: SITE_ID, apns: [], providerIds: [] });
     const env = await provider.envelopeFor(identity);
 
     expect(env.jurisdictionId).toBe("us-test");

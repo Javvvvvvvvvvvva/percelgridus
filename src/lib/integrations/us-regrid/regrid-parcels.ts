@@ -111,6 +111,7 @@ export class RegridParcelProvider implements ParcelProvider {
       lat: String(point.lat),
       lon: String(point.lng),
       limit: "1",
+      return_geometry: "true",
     });
     const body = await this.fetchJson(full);
     return parseRegridResponse(body, { retrievalDate: this.retrievalDate(), locator }, `point (${point.lng}, ${point.lat})`);
@@ -120,6 +121,7 @@ export class RegridParcelProvider implements ParcelProvider {
     const { full, locator } = this.url("/parcels/address", {
       query: normalizedAddress,
       limit: "1",
+      return_geometry: "true",
     });
     const body = await this.fetchJson(full);
     return parseRegridResponse(body, { retrievalDate: this.retrievalDate(), locator }, normalizedAddress);
@@ -138,7 +140,9 @@ export class RegridParcelProvider implements ParcelProvider {
           `the ${id.kind ?? "external"} identifier "${id.value}" alone; re-query by point or address.`,
       );
     }
-    const { full, locator } = this.url(`/parcels/${encodeURIComponent(id.value)}`, {});
+    const { full, locator } = this.url(`/parcels/${encodeURIComponent(id.value)}`, {
+      return_geometry: "true",
+    });
     const body = await this.fetchJson(full);
     return parseRegridResponse(body, { retrievalDate: this.retrievalDate(), locator }, `path ${id.value}`);
   }
