@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/header";
 import { Badge } from "@/components/badge";
-import { subjectParcel, recentLookups } from "@/lib/mock-data";
+import { DEFAULT_ADDRESS, EXAMPLE_ADDRESSES } from "@/lib/examples";
 import { PRO_FORMA_DEFAULTS } from "@/lib/proforma-live";
 
 type Scenario = "current" | "redev";
@@ -13,7 +13,7 @@ type Scenario = "current" | "redev";
 export default function SearchPage() {
   const router = useRouter();
   const [scenario, setScenario] = useState<Scenario>("redev");
-  const [address, setAddress] = useState(subjectParcel.address);
+  const [address, setAddress] = useState(DEFAULT_ADDRESS);
 
   const analyze = (addr: string) =>
     router.push(
@@ -165,38 +165,34 @@ export default function SearchPage() {
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <FieldLabel>Recent lookups</FieldLabel>
+              <FieldLabel>Try an example</FieldLabel>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {recentLookups.map((lookup) => (
+                {EXAMPLE_ADDRESSES.map((addr) => (
                   <Link
-                    key={lookup.address}
-                    href={`/report?scenario=${scenario}&address=${encodeURIComponent(lookup.address + ", Minneapolis, MN")}`}
+                    key={addr}
+                    href={`/report?scenario=${scenario}&address=${encodeURIComponent(addr)}`}
                     style={{
                       background: "var(--panel)",
                       border: "1px solid var(--line)",
                       borderRadius: 8,
                       padding: "12px 14px",
                       display: "flex",
-                      flexDirection: "column",
-                      gap: 5,
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 10,
                       color: "inherit",
                       textDecoration: "none",
                     }}
                   >
-                    <div style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 500, fontSize: 13, lineHeight: 1.3 }}>
-                      {lookup.address}
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1, color: "var(--ink3)" }}>
-                      <span>
-                        {lookup.district} · {lookup.lotAreaSf.toLocaleString("en-US")} sf
-                      </span>
-                      <span>{lookup.openItems} open items</span>
-                    </div>
+                    <span style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 500, fontSize: 13, lineHeight: 1.3 }}>
+                      {addr.replace(", Minneapolis, MN", "").replace(/, MN.*/, "")}
+                    </span>
+                    <span aria-hidden style={{ color: "var(--blue)", fontWeight: 600 }}>→</span>
                   </Link>
                 ))}
               </div>
               <div style={{ marginTop: 6, padding: "12px 14px", border: "1px dashed var(--line2)", borderRadius: 8, fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.5, color: "var(--ink3)" }}>
-                Saved lookups keep the source snapshot taken at run time, so numbers stay auditable.
+                Examples resolve live — no stats are shown here because none are stored yet; each run captures its own source snapshot.
               </div>
             </div>
           </div>
