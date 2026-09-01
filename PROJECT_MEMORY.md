@@ -1,6 +1,6 @@
 # PARCELGRID US — current working baseline
 
-Last updated: 2026-08-30
+Last updated: 2026-09-01
 
 Short handoff doc kept against the actual code, so the next worker does not
 mistake an old "next session" note for a current requirement. The product and
@@ -339,11 +339,66 @@ representative parcel now shows 7 blockers, not 8.
   profile (`IntakeOptions.preNormalized` avoids a second geocode).
 
 **UI prototype** (`ui-prototype/`) is wired to the library via `lib/parcelgrid.ts`
-(server bridge running the real pipeline). Report/envelope/pro-forma pages render
-live data: assessor facts, effective tax rate, overlays, parking, plus a pro-forma
-"market reference (not inputs)" panel. Runs on Next.js with `--webpack` +
+(server bridge running the real pipeline). Runs on Next.js with `--webpack` +
 `extensionAlias` to import the library's `.js`-specified TS. Not deployed
-(deployment is gated on the founder finishing more states).
+(deployment is gated on the founder finishing more states). Current screens:
+
+- **Landing** (`app/page.tsx`) — one interactive US map (`components/us-map-interactive.tsx`);
+  supported states are clickable, others show "not yet supported".
+- **Search** (`app/search/page.tsx`) — address + acquisition + scenario toggle.
+  "Try an example" lists plain example addresses only — no fabricated stats
+  (`lib/examples.ts`; the old `mock-data.ts` with hand-written parcel numbers is gone).
+- **Report** (`app/report/page.tsx`) — map-split: left = the REAL Hennepin parcel
+  polygon (`components/parcel-map.tsx`) + subject identity (with a routed
+  **jurisdiction** tag) + approval-blocking open items (each tagged with its owner);
+  right = grounded-facts grid (data-driven badges/citations; permitted uses come
+  from the library's Table 545-1, never hardcoded). When the parcel is Unresolved
+  the facts grid is replaced by an honest panel that states the reason and offers
+  **nearby real parcels** to pick (`ParcelProvider.nearby`, closest-first, never
+  auto-snapped). A primary "view redevelopment envelope & pro forma" button always
+  shows on a resolved report (any scenario).
+- **Envelope** (`app/envelope/page.tsx`) — 3D isometric **massing model**
+  (`components/massing-3d.tsx`): the real footprint extruded to the §540.410 height
+  with floor plates, over the dashed lot outline. Pure SVG, server-rendered.
+- **Pro forma** (`app/proforma/proforma-client.tsx`) — runs the REAL finance engine
+  client-side (`lib/proforma-live.ts`); sliders drive only user assumptions.
+  **Redevelopment options** compares the by-right dwelling types (1/2/3-family),
+  each with its own ordinance FAR tier, live with the sliders. **Existing vs
+  redevelopment** sets the assessor market value against the selected option's
+  stabilized value (directional; different valuation bases, stated).
+
+Multi-jurisdiction routing is wired into the bridge: it registers Minneapolis +
+Saint Paul and routes via `intakeSiteRouted`. Saint Paul parcels resolve only
+with `REGRID_TOKEN` set (else an honest pending placeholder); an out-of-coverage
+address stops with "no covered jurisdiction".
+
+## Session 2026-09-01 — UI depth: decisions, 3D, routing, integrity
+
+Library additions this session:
+
+- **`ParcelProvider.nearby(point, {radiusMeters, max})`** (optional seam;
+  implemented for Hennepin) — returns `ParcelCandidate` suggestions (label +
+  re-query address + PID + centroid distance), closest-first. NOT a resolution:
+  used when a Google-sourced house number isn't itself a parcel (e.g. "1412 S 3rd
+  St" → the real lot is 1414) so the app offers neighbours to pick instead of
+  snapping. Buffered ArcGIS query (`distance` + `esriSRUnit_Meter`).
+- **Existing-structure honesty**: the Hennepin `existingBuildingFootprint` gap now
+  states a structure IS on record (with assessor year built) while keeping the
+  footprint polygon Unresolved — "existing building" reads as a known structure,
+  not an unknown absence.
+
+UI work (all in `ui-prototype/`, see the UI section above): map-split report,
+nearby-parcel disambiguation, honest Unresolved rendering (no fabricated 0s or
+verified badges), data-driven permitted uses, the 3D massing model, the
+by-right scenario comparison, existing-vs-redevelopment, address→jurisdiction
+routing surfaced with a jurisdiction tag, an always-available forward button, and
+removal of the fabricated "recent lookups".
+
+Deliberately NOT done (honest, not skipped): interior side/rear **setback**
+values stay Unresolved — the Minneapolis Urban Neighborhood yard standards could
+not be verified against an authoritative source (all ordinance hosts are egress-
+blocked here), and the front yard is genuinely contextual (established-average),
+so no number is fabricated.
 
 ## How to add a new jurisdiction
 
