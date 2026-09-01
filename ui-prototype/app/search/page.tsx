@@ -81,7 +81,7 @@ export default function SearchPage() {
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center", fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.4, color: "var(--ink3)" }}>
                   <Badge tone="blue">OFFICIAL</Badge>
-                  Matched on the Hennepin County parcel layer (pilot: Minneapolis)
+                  Matched on the jurisdiction's parcel layer (Minneapolis, Saint Paul; nationwide with a Regrid token)
                 </div>
               </div>
 

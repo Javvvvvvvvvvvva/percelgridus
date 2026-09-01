@@ -20,12 +20,15 @@ export function ParcelMap({
   footprintLabel,
   heightPx = 320,
   compact = false,
+  boundarySource,
 }: {
   rings: number[][][] | null;
   lotAreaSf: number | null;
   floodLabel: string | null;
   overlayLabel: string | null;
   address: string;
+  /** Parcel provider source label (e.g. Hennepin vs Regrid); defaults generic. */
+  boundarySource?: string | null;
   /** 0..1 — when set, draws an inset footprint covering this fraction of the lot. */
   footprintFraction?: number | null;
   footprintLabel?: string;
@@ -166,7 +169,7 @@ export function ParcelMap({
               {lotAreaSf.toLocaleString("en-US")} sq ft
             </div>
           ) : null}
-          <div>Hennepin GIS boundary</div>
+          <div>{boundarySource ?? "Parcel GIS boundary"}</div>
         </div>
       ) : null}
     </div>

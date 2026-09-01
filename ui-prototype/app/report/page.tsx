@@ -102,6 +102,7 @@ export default async function ReportPage({
                 floodLabel={floodLabel}
                 overlayLabel={overlayLabel}
                 address={subjectParcel.address}
+                boundarySource={subjectParcel.source}
               />
 
               <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 8, padding: "16px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
@@ -130,7 +131,7 @@ export default async function ReportPage({
                     <>
                       <Badge tone="blue">OFFICIAL · VERIFIED</Badge>
                       <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.4, color: "var(--ink3)" }}>
-                        Hennepin County Assessor parcel record
+                        {subjectParcel.source ?? "County assessor parcel record"}
                       </span>
                     </>
                   ) : (
@@ -262,7 +263,7 @@ export default async function ReportPage({
                   </div>
                   <div style={{ fontFamily: "var(--font-sans), sans-serif", fontSize: 13, lineHeight: 1.6, color: "var(--ink2)" }}>
                     {sa.unresolvedReason ??
-                      "The address was located, but no Hennepin County parcel falls on that point."}
+                      "The address was located, but no parcel falls on that point."}
                   </div>
                   <div style={{ fontFamily: "var(--font-sans), sans-serif", fontSize: 13, lineHeight: 1.6, color: "var(--ink2)" }}>
                     This is not a network or firewall error — the pipeline reached its sources and
@@ -320,7 +321,7 @@ export default async function ReportPage({
                   label="Lot area"
                   value={<>{(subjectParcel.lotAreaSf ?? 0).toLocaleString("en-US")} <span style={{ fontSize: 14, color: "var(--ink2)" }}>sq ft</span></>}
                   badges={[{ tone: "blue", label: "OFFICIAL · VERIFIED" }]}
-                  source="Hennepin County GIS parcel polygon"
+                  source={subjectParcel.source ?? "County GIS parcel polygon"}
                 />
                 <FactCard
                   label="Flood exposure"
@@ -443,21 +444,21 @@ export default async function ReportPage({
                       label="Year built"
                       value={sa.assessment.yearBuilt ?? "—"}
                       badges={[{ tone: "blue", label: "OFFICIAL · VERIFIED" }]}
-                      source="Hennepin County Assessor — BUILD_YR"
+                      source={subjectParcel.source ?? "County assessor — year built"}
                     />
                     <FactCard
                       label="Assessor taxable value"
                       value={sa.assessment.assessedValue ?? "—"}
                       sub="Total taxable market value — current assessment"
                       badges={[{ tone: "blue", label: "OFFICIAL · VERIFIED" }]}
-                      source="Hennepin County Assessor — current"
+                      source={subjectParcel.source ?? "County assessor — current"}
                     />
                     <FactCard
                       label="Annual property tax"
                       value={sa.assessment.annualPropertyTax ?? "—"}
                       sub="Actual amount billed — current assessment"
                       badges={[{ tone: "blue", label: "OFFICIAL · VERIFIED" }]}
-                      source="Hennepin County Assessor — current"
+                      source={subjectParcel.source ?? "County assessor — current"}
                     />
                     <FactCard
                       label="Effective tax rate"
@@ -478,7 +479,7 @@ export default async function ReportPage({
                         value={sa.assessment.lastSalePrice}
                         sub={`${sa.assessment.lastSaleDate ?? ""}${sa.assessment.lastSaleCaveat ? " · " + sa.assessment.lastSaleCaveat : ""}`}
                         badges={[{ tone: "blue", label: "OFFICIAL" }]}
-                        source="Hennepin County Assessor — sale record"
+                        source={subjectParcel.source ?? "County assessor — sale record"}
                       />
                     )}
                   </>

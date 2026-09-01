@@ -49,6 +49,9 @@ export interface ParcelSummary {
   readonly maxHeightFt: number | null;
   readonly maxFar: number | null;
   readonly maxLotCoveragePct: number | null;
+  /** The parcel provider's source label (e.g. "Hennepin County GIS — County
+   *  Parcels" or "Regrid — nationwide parcel data"), for honest provenance. */
+  readonly source: string | null;
 }
 
 /** Hennepin assessor facts + the derived current effective tax rate. */
@@ -299,6 +302,18 @@ export async function getSiteAnalysis(
     ? zoning.zoningDistrict
     : undefined;
 
+  // The parcel provider's own source label, shared by every parcel/assessor
+  // fact — so the report cites the actual source (Hennepin vs Regrid), never a
+  // hardcoded county name.
+  const parcelSource: string | null =
+    parcel && isEvidence(parcel.geometry)
+      ? (parcel.geometry.source?.label ?? null)
+      : parcel && isEvidence(parcel.lotArea)
+        ? (parcel.lotArea.source?.label ?? null)
+        : parcel && isEvidence(parcel.ownerName)
+          ? (parcel.ownerName.source?.label ?? null)
+          : null;
+
   const parcelSummary: ParcelSummary = {
     address: isEvidence(dd.address) ? dd.address.value.normalized : address,
     apn: parcel ? (parcel.identity.apns[0]?.value ?? null) : null,
@@ -310,6 +325,7 @@ export async function getSiteAnalysis(
     maxHeightFt: zoning ? num(zoning.maxHeight, (l) => Math.round(l.toFeet())) : null,
     maxFar: zoning ? num(zoning.maxFar, (n) => n) : null,
     maxLotCoveragePct: zoning ? num(zoning.maxLotCoverage, (n) => Math.round(n * 100)) : null,
+    source: parcelSource,
   };
 
   const buildableGsf = massing

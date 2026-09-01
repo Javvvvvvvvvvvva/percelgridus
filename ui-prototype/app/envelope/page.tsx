@@ -63,6 +63,7 @@ export default async function EnvelopePage({
                 }
                 heightPx={240}
                 compact
+                boundarySource={subjectParcel.source}
               />
 
               {/* Height cap / stories — a plan view can't show elevation, so state it. */}

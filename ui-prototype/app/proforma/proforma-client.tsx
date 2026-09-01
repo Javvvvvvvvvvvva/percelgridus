@@ -322,7 +322,7 @@ export default function ProFormaClient({
                     />
                   )}
                   <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.5, color: "var(--ink3)" }}>
-                    Hennepin County Assessor — current assessment. Shown to sanity-check the acquisition assumption above; these do not drive the math.
+                    {parcel.source ?? "County assessor"} — current assessment. Shown to sanity-check the acquisition assumption above; these do not drive the math.
                   </div>
                 </div>
               )}
