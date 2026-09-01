@@ -195,25 +195,27 @@ export default async function ReportPage({
                 </button>
               </div>
 
-              {isRedev && resolved && (
+              {resolved && (
                 <Link
                   href={`/envelope?address=${encodeURIComponent(subjectParcel.address)}`}
                   style={{
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    background: "var(--blue-bg)",
+                    background: "var(--blue)",
                     border: "1px solid var(--blue)",
                     borderRadius: 8,
-                    padding: "14px 16px",
-                    color: "var(--blue)",
+                    padding: "15px 18px",
+                    color: "#fff",
                     textDecoration: "none",
                     fontFamily: "var(--font-sans), sans-serif",
                     fontWeight: 600,
-                    fontSize: 13,
+                    fontSize: 14,
                   }}
                 >
-                  Redevelopment scenario — view maximum build envelope
+                  {isRedev
+                    ? "Redevelopment — view build envelope & pro forma"
+                    : "View redevelopment envelope & pro forma"}
                   <span aria-hidden>→</span>
                 </Link>
               )}
