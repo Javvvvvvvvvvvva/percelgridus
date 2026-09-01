@@ -67,3 +67,27 @@ cd ui-prototype
 npm install
 npm run dev
 ```
+
+## Multi-jurisdiction & turning on Regrid (nationwide parcels)
+
+`lib/parcelgrid.ts` routes each address to the jurisdiction that serves it:
+
+- **Minneapolis** — resolves fully (Hennepin County GIS, free).
+- **Saint Paul** — routes to its live zoning; parcels need a Regrid token (or a
+  Ramsey/Met Council adapter) — until then the report shows an honest pending
+  state, never fabricated data.
+- **Anywhere else in the US** — resolves parcels + flood + terrain via Regrid
+  when a token is set; zoning shows "not yet covered" until a local adapter
+  exists. Without a token, an out-of-pilot address stops with "no covered
+  jurisdiction".
+
+To turn on Regrid (paid; 30-day free trial at regrid.com), set the token when
+running:
+
+```bash
+REGRID_TOKEN=<your-regrid-token> npm run dev
+```
+
+That single env var makes Saint Paul and any US address resolve parcels. No code
+change is needed — the `RegridParcelProvider` is verified against Regrid's live
+v2 API (endpoints, `token`/`lat`/`lon`/`query` params, GeoJSON standard schema).
