@@ -18,7 +18,9 @@ import {
   MINNEAPOLIS_JURISDICTION_ID,
 } from "../../src/lib/integrations/us-minneapolis/index.js";
 import { createStPaulProfile } from "../../src/lib/integrations/us-stpaul/index.js";
-import { intakeSiteRouted } from "../../src/lib/intake/index.js";
+import { createUsRegridProfile } from "../../src/lib/integrations/us-national/index.js";
+import { intakeSite, intakeSiteRouted } from "../../src/lib/intake/index.js";
+import type { SiteDueDiligence } from "../../src/lib/intake/index.js";
 import { InMemorySiteRepository } from "../../src/lib/persistence/index.js";
 import { JurisdictionRegistry } from "../../src/lib/jurisdiction/index.js";
 import {
@@ -239,14 +241,32 @@ export async function getSiteAnalysis(
   );
   const repository = new InMemorySiteRepository();
   const routerAddress = registry.get(MINNEAPOLIS_JURISDICTION_ID).addressProvider;
-  const dd = await intakeSiteRouted(
+  const routed = await intakeSiteRouted(
     address,
     { registry, repository, addressProvider: routerAddress },
     { intent: { useClass: opts.useClass ?? "three-family" } },
   );
-  const routedProfile =
-    dd.jurisdictionId !== undefined ? registry.get(dd.jurisdictionId) : undefined;
-  const jurisdictionName = dd.jurisdictionName ?? null;
+  let dd: SiteDueDiligence = routed;
+  let routedProfile =
+    routed.jurisdictionId !== undefined ? registry.get(routed.jurisdictionId) : undefined;
+  let jurisdictionName = routed.jurisdictionName ?? null;
+
+  // Nationwide fallback: no city adapter serves this address, but a Regrid token
+  // is configured → resolve the parcel anywhere via Regrid (zoning stays "not
+  // yet covered"). Without a token, stay on the honest "no jurisdiction" path.
+  if (routedProfile === undefined && isEvidence(routed.address) && process.env.REGRID_TOKEN) {
+    const regridProfile = createUsRegridProfile({
+      regridToken: process.env.REGRID_TOKEN,
+      usgs: { timeoutMs: 45_000 },
+    });
+    dd = await intakeSite(
+      address,
+      { profile: regridProfile, repository },
+      { intent: { useClass: opts.useClass ?? "three-family" }, preNormalized: routed.address },
+    );
+    routedProfile = regridProfile;
+    jurisdictionName = regridProfile.displayName;
+  }
 
   const zoning = dd.zoning;
   const parcel =
@@ -396,7 +416,8 @@ export async function getSiteAnalysis(
     } else if (routedProfile === undefined) {
       unresolvedReason =
         "No covered jurisdiction serves this address. The pilot covers Minneapolis (fully) " +
-        "and Saint Paul (zoning live; parcels need a Regrid token or county access).";
+        "and Saint Paul (zoning live); set REGRID_TOKEN to resolve parcels nationwide via " +
+        "Regrid (zoning still shows as not-yet-covered outside the pilot cities).";
     } else if (dd.parcel !== undefined && isUnresolved(dd.parcel)) {
       unresolvedReason = dd.parcel.requiredAction ?? "No parcel was found for this address.";
     } else {
