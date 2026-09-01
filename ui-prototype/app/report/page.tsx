@@ -111,6 +111,16 @@ export default async function ReportPage({
                 <div style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 600, fontSize: 20, lineHeight: 1.2, letterSpacing: "-.02em" }}>
                   {subjectParcel.address}
                 </div>
+                {sa.jurisdictionName ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                    <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 9, lineHeight: 1, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--blue)", background: "var(--blue-bg)", border: "1px solid var(--blue)", borderRadius: 4, padding: "3px 7px", whiteSpace: "nowrap" }}>
+                      Jurisdiction
+                    </span>
+                    <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.4, color: "var(--ink2)" }}>
+                      {sa.jurisdictionName}
+                    </span>
+                  </div>
+                ) : null}
                 <div style={{ display: "flex", gap: 16, fontFamily: "var(--font-mono), monospace", fontSize: 12, lineHeight: 1.5, color: "var(--ink2)", flexWrap: "wrap" }}>
                   <span>APN {subjectParcel.apn ?? "—"}</span>
                   <span>Owner: {subjectParcel.owner ?? (resolved ? "[on record]" : "—")}</span>
@@ -260,7 +270,7 @@ export default async function ReportPage({
                     zoning, or tax figure.
                     {sa.candidates.length
                       ? " The address you entered isn't itself a parcel; the closest real parcels are below — pick one to analyze it."
-                      : " Try a nearby street address, or confirm the parcel on the Hennepin County parcel viewer."}
+                      : " Try a nearby street address, or confirm the parcel on the county parcel viewer."}
                   </div>
 
                   {sa.candidates.length > 0 && (

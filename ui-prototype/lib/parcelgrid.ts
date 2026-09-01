@@ -13,9 +13,14 @@
  * from server components / route handlers, never from a "use client" module.
  */
 
-import { createMinneapolisProfile } from "../../src/lib/integrations/us-minneapolis/index.js";
-import { intakeSite } from "../../src/lib/intake/index.js";
+import {
+  createMinneapolisProfile,
+  MINNEAPOLIS_JURISDICTION_ID,
+} from "../../src/lib/integrations/us-minneapolis/index.js";
+import { createStPaulProfile } from "../../src/lib/integrations/us-stpaul/index.js";
+import { intakeSiteRouted } from "../../src/lib/intake/index.js";
 import { InMemorySiteRepository } from "../../src/lib/persistence/index.js";
+import { JurisdictionRegistry } from "../../src/lib/jurisdiction/index.js";
 import {
   buildDecisionReport,
   type DecisionReport,
@@ -135,6 +140,8 @@ export interface SiteAnalysis {
   readonly candidates: readonly ParcelCandidateUi[];
   /** By-right redevelopment options to compare (only when requested). */
   readonly scenarios: readonly ScenarioSeed[];
+  /** The jurisdiction the address routed to, e.g. "Minneapolis, Hennepin County, MN". */
+  readonly jurisdictionName: string | null;
 }
 
 /** A nearby-parcel suggestion for the UI (address to re-query + how far). */
@@ -218,13 +225,28 @@ export async function getSiteAnalysis(
   // USGS EPQS (3DEP terrain) can be slow; give it a generous server-side
   // timeout so a slow — but eventually successful — response doesn't abort the
   // whole request the way the 10s provider default would under load.
-  const profile = createMinneapolisProfile({ usgs: { timeoutMs: 45_000 } });
+  // Multi-jurisdiction: register the covered profiles and route the address to
+  // the right one. Saint Paul parcels resolve only when a Regrid token is set
+  // (REGRID_TOKEN) — otherwise its parcel adapter is an honest pending
+  // placeholder, and the report says so instead of guessing.
+  const registry = new JurisdictionRegistry();
+  registry.register(createMinneapolisProfile({ usgs: { timeoutMs: 45_000 } }));
+  registry.register(
+    createStPaulProfile({
+      usgs: { timeoutMs: 45_000 },
+      ...(process.env.REGRID_TOKEN ? { regridToken: process.env.REGRID_TOKEN } : {}),
+    }),
+  );
   const repository = new InMemorySiteRepository();
-  const dd = await intakeSite(
+  const routerAddress = registry.get(MINNEAPOLIS_JURISDICTION_ID).addressProvider;
+  const dd = await intakeSiteRouted(
     address,
-    { profile, repository },
+    { registry, repository, addressProvider: routerAddress },
     { intent: { useClass: opts.useClass ?? "three-family" } },
   );
+  const routedProfile =
+    dd.jurisdictionId !== undefined ? registry.get(dd.jurisdictionId) : undefined;
+  const jurisdictionName = dd.jurisdictionName ?? null;
 
   const zoning = dd.zoning;
   const parcel =
@@ -371,16 +393,21 @@ export async function getSiteAnalysis(
   if (!parcelResolved) {
     if (dd.address !== undefined && isUnresolved(dd.address)) {
       unresolvedReason = dd.address.requiredAction ?? "The address could not be resolved.";
+    } else if (routedProfile === undefined) {
+      unresolvedReason =
+        "No covered jurisdiction serves this address. The pilot covers Minneapolis (fully) " +
+        "and Saint Paul (zoning live; parcels need a Regrid token or county access).";
     } else if (dd.parcel !== undefined && isUnresolved(dd.parcel)) {
       unresolvedReason = dd.parcel.requiredAction ?? "No parcel was found for this address.";
     } else {
       unresolvedReason = "The parcel could not be resolved for this address.";
     }
     // Offer nearby real parcels the user can pick — never auto-snapped. Only
-    // possible when the address geocoded to a point.
-    if (isEvidence(dd.address) && profile.parcelProvider.nearby) {
+    // possible when the address geocoded to a point AND the routed jurisdiction's
+    // parcel provider supports a nearby search (Hennepin does; others may not).
+    if (isEvidence(dd.address) && routedProfile?.parcelProvider.nearby) {
       try {
-        const near = await profile.parcelProvider.nearby(dd.address.value.point, {
+        const near = await routedProfile.parcelProvider.nearby(dd.address.value.point, {
           radiusMeters: 45,
           max: 6,
         });
@@ -400,7 +427,12 @@ export async function getSiteAnalysis(
   // each with its own ordinance FAR tier (Table 540-2). Only computed on request
   // (an extra zoning query per option), so report/envelope don't pay the cost.
   let scenarios: readonly ScenarioSeed[] = [];
-  if (opts.withScenarios && parcel !== undefined && isEvidence(parcel.geometry)) {
+  if (
+    opts.withScenarios &&
+    parcel !== undefined &&
+    isEvidence(parcel.geometry) &&
+    routedProfile !== undefined
+  ) {
     const geometry = parcel.geometry.value;
     const USE_CLASSES = [
       { k: "single-family", label: "Single-family" },
@@ -409,7 +441,7 @@ export async function getSiteAnalysis(
     ] as const;
     const envs = await Promise.all(
       USE_CLASSES.map((u) =>
-        profile.zoningProvider.envelopeFor(parcel.identity, geometry, { useClass: u.k }),
+        routedProfile.zoningProvider.envelopeFor(parcel.identity, geometry, { useClass: u.k }),
       ),
     );
     scenarios = USE_CLASSES.map((u, i) => {
@@ -453,6 +485,7 @@ export async function getSiteAnalysis(
     unresolvedReason,
     candidates,
     scenarios,
+    jurisdictionName,
     proFormaSeed: {
       buildableGsf,
       units,
