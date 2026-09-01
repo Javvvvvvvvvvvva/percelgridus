@@ -1,32 +1,36 @@
 import { Badge } from "@/components/badge";
+import type { ParcelGeometryUi } from "@/lib/parcel-geometry";
 
 /**
- * Isometric massing model — extrudes the parcel's REAL footprint (the Hennepin
- * GIS lot polygon, inset to the by-right lot-coverage fraction) up to the
- * ordinance height, as an axonometric solid with per-storey floor plates. Like
- * ParcelMap it uses no basemap and invents no detail: the plan comes from the
- * real boundary, the height from the parsed §540.410 cap, and it says so. Pure
- * SVG, server-renderable, so it costs nothing at runtime.
+ * Isometric coverage study. It scales a resolved single parcel boundary toward
+ * its centroid and extrudes it to the resolved height cap. This is not a legal
+ * buildable envelope: it does not yet offset contextual setbacks or classify
+ * frontage. Multipart parcels are intentionally blocked instead of truncating
+ * them to one polygon.
  */
 export function MassingModel3D({
-  rings,
+  geometry,
   coverageFraction,
   heightFt,
   stories,
   floodLabel,
+  setbacksResolved,
   address,
   heightPx = 380,
 }: {
-  rings: number[][][] | null;
+  geometry: ParcelGeometryUi | null;
   coverageFraction: number | null;
   heightFt: number | null;
   stories: number | null;
   floodLabel: string | null;
+  setbacksResolved: boolean;
   address: string;
   heightPx?: number;
 }) {
   const W = 460;
   const H = heightPx;
+  const rings = geometry?.type === "Polygon" ? geometry.coordinates : null;
+  const multipart = geometry?.type === "MultiPolygon";
   const model =
     rings && rings.length > 0 && heightFt && heightFt > 0
       ? buildModel(rings, coverageFraction ?? 1, heightFt, stories ?? 3, W, H)
@@ -45,9 +49,10 @@ export function MassingModel3D({
       <div style={{ position: "absolute", top: 12, left: 14, display: "flex", gap: 6, flexWrap: "wrap", zIndex: 2 }}>
         {floodLabel ? <Badge tone="blue">{floodLabel}</Badge> : null}
         <Badge tone="gray">SCHEMATIC MASSING</Badge>
+        {!setbacksResolved ? <Badge tone="orange">SETBACKS NOT APPLIED</Badge> : null}
       </div>
 
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`By-right massing model for ${address}`} style={{ width: "100%", height: "auto", display: "block" }}>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Preliminary coverage massing study for ${address}`} style={{ width: "100%", height: "auto", display: "block" }}>
         <defs>
           <pattern id="pg-grid3d" width="28" height="28" patternUnits="userSpaceOnUse">
             <path d="M28 0H0V28" fill="none" stroke="var(--line)" strokeWidth="1" opacity="0.5" />
@@ -71,9 +76,16 @@ export function MassingModel3D({
             <path d={model.topPath} fill="var(--blue)" fillOpacity={0.82} stroke="var(--blue)" strokeWidth={1.5} strokeLinejoin="round" />
           </>
         ) : (
-          <text x={W / 2} y={H / 2} textAnchor="middle" fontSize={13} fill="var(--ink3)" fontFamily="var(--font-mono), monospace">
-            Massing unresolved
-          </text>
+          <>
+            <text x={W / 2} y={H / 2 - 8} textAnchor="middle" fontSize={13} fill="var(--ink3)" fontFamily="var(--font-mono), monospace">
+              Massing unresolved
+            </text>
+            {multipart ? (
+              <text x={W / 2} y={H / 2 + 14} textAnchor="middle" fontSize={11} fill="var(--ink3)" fontFamily="var(--font-mono), monospace">
+                Multipart parcel requires multipart envelope support
+              </text>
+            ) : null}
+          </>
         )}
       </svg>
 
@@ -83,7 +95,9 @@ export function MassingModel3D({
             {heightFt} ft · ≈ {stories ?? 3} stories
           </div>
         ) : null}
-        <div>real footprint · §540.410 height</div>
+        <div>
+          {setbacksResolved ? "resolved envelope" : "coverage-only footprint"} · height cap
+        </div>
       </div>
     </div>
   );

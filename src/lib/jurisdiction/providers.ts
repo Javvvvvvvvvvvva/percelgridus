@@ -24,6 +24,45 @@ import type { ExternalIdentifier, ParcelIdentity } from "./identifiers.js";
 /** A GeoJSON-style polygon ring set in WGS84 (lng, lat). */
 export type PolygonCoordinates = number[][][];
 
+/** A GeoJSON-style multi-polygon coordinate set in WGS84 (lng, lat). */
+export type MultiPolygonCoordinates = number[][][][];
+
+/** Parcel geometry keeps the GeoJSON type so multipart parcels are not lost. */
+export type ParcelGeometry =
+  | { readonly type: "Polygon"; readonly coordinates: PolygonCoordinates }
+  | {
+      readonly type: "MultiPolygon";
+      readonly coordinates: MultiPolygonCoordinates;
+    };
+
+/**
+ * Backward-compatible provider input. New parcel records always carry the
+ * discriminated {@link ParcelGeometry}; direct adapter callers may still pass
+ * raw polygon rings while they migrate.
+ */
+export type ParcelGeometryInput = ParcelGeometry | PolygonCoordinates;
+
+export function polygonGeometry(
+  coordinates: PolygonCoordinates,
+): ParcelGeometry {
+  return { type: "Polygon", coordinates };
+}
+
+/** Return every polygon part without silently selecting only the first one. */
+export function parcelGeometryParts(
+  geometry: ParcelGeometryInput,
+): readonly PolygonCoordinates[] {
+  if (Array.isArray(geometry)) return [geometry];
+  return geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
+}
+
+/** ArcGIS polygon JSON represents multipart polygons as one flat ring array. */
+export function parcelGeometryRings(
+  geometry: ParcelGeometryInput,
+): PolygonCoordinates {
+  return parcelGeometryParts(geometry).flatMap((polygon) => polygon);
+}
+
 export interface GeoPoint {
   readonly lng: number;
   readonly lat: number;
@@ -64,11 +103,11 @@ export interface ParcelSale {
 
 export interface ParcelRecord {
   readonly identity: ParcelIdentity;
-  readonly geometry: EvidenceOrUnresolved<PolygonCoordinates>;
+  readonly geometry: EvidenceOrUnresolved<ParcelGeometry>;
   readonly lotArea: EvidenceOrUnresolved<Area>;
   readonly ownerName: EvidenceOrUnresolved<string>;
   /** Existing structure footprint(s), if the provider reports them. */
-  readonly existingBuildingFootprint?: EvidenceOrUnresolved<PolygonCoordinates>;
+  readonly existingBuildingFootprint?: EvidenceOrUnresolved<ParcelGeometry>;
   /** Assessor year the primary structure was built, when on record. */
   readonly yearBuilt?: EvidenceOrUnresolved<number>;
   /** Assessor total taxable market value, when on record. */
@@ -174,7 +213,7 @@ export interface ZoningEvidenceProvider {
    */
   envelopeFor(
     identity: ParcelIdentity,
-    geometry?: PolygonCoordinates,
+    geometry?: ParcelGeometryInput,
     intent?: DevelopmentIntent,
   ): Promise<ByRightEnvelope>;
   /** Citation template the adapter stamps onto each parsed rule. */
@@ -198,10 +237,10 @@ export interface HazardProvider {
   readonly id: string; // e.g. "fema-nfhl", "usgs-3dep"
   readonly hazardKind: "flood" | "terrain";
   flood?(
-    geometry: PolygonCoordinates,
+    geometry: ParcelGeometryInput,
   ): Promise<Evidence<FloodHazard> | Unresolved>;
   terrain?(
-    geometry: PolygonCoordinates,
+    geometry: ParcelGeometryInput,
   ): Promise<Evidence<TerrainSummary> | Unresolved>;
 }
 

@@ -7,12 +7,10 @@
  *
  * What is sourced today: both DISTRICTS, each resolved as an official fact by a
  * polygon-intersects query (so a split-zoned lot is caught and returned
- * Unresolved rather than mis-picked). The by-right NUMERIC standards (FAR,
- * height, setbacks, lot coverage) are keyed by the built form district and come
- * from the Chapter 540 rule table (built-form-rules) — currently empty because
- * the ordinance text is not reachable from this environment, so those fields
- * surface as Unresolved. Allowed uses (§ 545.100) and the citywide-zero parking
- * minimum (Chapter 541) are sourced; overlay districts (Chapter 551) are
+ * Unresolved rather than mis-picked). FAR, lot coverage, and height are keyed
+ * by the built-form/primary district tables in `built-form-rules`; contextual
+ * setbacks remain Unresolved. Selected residential uses (§ 545.100) and the
+ * citywide-zero parking minimum (Chapter 541) are sourced; overlays (Ch. 551) are
  * resolved from the City overlay layer as spatial facts (a clean set of misses
  * resolves the field to "no overlays apply"); discretionary approvals stay
  * Unresolved. A sourced rule, once added, flows through
@@ -31,9 +29,10 @@ import type { ParcelIdentity } from "../../jurisdiction/identifiers.js";
 import type {
   ByRightEnvelope,
   DevelopmentIntent,
-  PolygonCoordinates,
+  ParcelGeometryInput,
   ZoningEvidenceProvider,
 } from "../../jurisdiction/providers.js";
+import { parcelGeometryRings } from "../../jurisdiction/providers.js";
 import type { BuiltFormQueryResponse } from "./built-form-response.js";
 import {
   primaryCategoryFromDistrict,
@@ -115,8 +114,8 @@ export class MinneapolisZoningError extends Error {
 export class MinneapolisZoningProvider implements ZoningEvidenceProvider {
   readonly id = "us-minneapolis-primary-zoning";
   readonly jurisdictionId = MINNEAPOLIS_JURISDICTION_ID;
-  /** Both districts are sourced; by-right numeric rules are not yet seeded. */
-  readonly parserVersion = "2026.08.0-district";
+  /** Districts plus the currently supported Chapter 540/541/545/551 rules. */
+  readonly parserVersion = "2026.09.0-envelope";
 
   private readonly baseUrl: string;
   private readonly builtFormBaseUrl: string;
@@ -144,9 +143,9 @@ export class MinneapolisZoningProvider implements ZoningEvidenceProvider {
    * the server's URL/header limits as a GET and returns HTTP 414/431, which
    * would abort the whole analysis.
    */
-  private queryBody(geometry: PolygonCoordinates, outFields: string): string {
+  private queryBody(geometry: ParcelGeometryInput, outFields: string): string {
     const esriPolygon = JSON.stringify({
-      rings: geometry,
+      rings: parcelGeometryRings(geometry),
       spatialReference: { wkid: 4326 },
     });
     return new URLSearchParams({
@@ -173,9 +172,9 @@ export class MinneapolisZoningProvider implements ZoningEvidenceProvider {
    * name keeps only genuine overlay features; the clean sublayers all populate
    * SYMBOL_NAM, so the filter is harmless there.
    */
-  private overlayCountBody(geometry: PolygonCoordinates): string {
+  private overlayCountBody(geometry: ParcelGeometryInput): string {
     const esriPolygon = JSON.stringify({
-      rings: geometry,
+      rings: parcelGeometryRings(geometry),
       spatialReference: { wkid: 4326 },
     });
     return new URLSearchParams({
@@ -197,7 +196,7 @@ export class MinneapolisZoningProvider implements ZoningEvidenceProvider {
    * overlay is never asserted without having checked.
    */
   private async resolveOverlays(
-    geometry: PolygonCoordinates,
+    geometry: ParcelGeometryInput,
     retrievalDate: string,
   ): Promise<readonly EvidenceOrUnresolved<string>[]> {
     const source: SourceRef = {
@@ -271,13 +270,13 @@ export class MinneapolisZoningProvider implements ZoningEvidenceProvider {
 
   async envelopeFor(
     identity: ParcelIdentity,
-    geometry?: PolygonCoordinates,
+    geometry?: ParcelGeometryInput,
     intent?: DevelopmentIntent,
   ): Promise<ByRightEnvelope> {
     const subject = identity.normalizedAddress ?? `site ${identity.siteId}`;
 
     // Both districts are spatial facts; without geometry neither resolves.
-    if (geometry === undefined || geometry.length === 0) {
+    if (geometry === undefined || parcelGeometryRings(geometry).length === 0) {
       return buildEnvelope(
         unresolved(
           "zoning district",

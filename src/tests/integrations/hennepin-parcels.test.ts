@@ -49,8 +49,9 @@ describe("parseParcelResponse", () => {
     expect(isEvidence(record.geometry)).toBe(true);
     if (!isEvidence(record.geometry)) throw new Error("expected geometry");
     expect(record.geometry.provenance).toBe("official");
-    expect(record.geometry.value[0]!.length).toBe(5);
-    expect(record.geometry.value[0]![0]![0]).toBeCloseTo(-93.2895, 3);
+    expect(record.geometry.value.type).toBe("Polygon");
+    expect(record.geometry.value.coordinates[0]!.length).toBe(5);
+    expect(record.geometry.value.coordinates[0]![0]![0]).toBeCloseTo(-93.2895, 3);
 
     // Lot area — assessor PARCEL_AREA read as square feet.
     if (!isEvidence(record.lotArea)) throw new Error("expected lot area");

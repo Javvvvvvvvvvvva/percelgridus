@@ -355,7 +355,7 @@ describe("MinneapolisZoningProvider", () => {
     const cite = provider.citationFor("§ 546.10");
     expect(cite.jurisdictionId).toBe("us-mn-hennepin-minneapolis");
     expect(cite.ordinanceSection).toBe("§ 546.10");
-    expect(cite.parserVersion).toBe("2026.08.0-district");
+    expect(cite.parserVersion).toBe("2026.09.0-envelope");
     expect(cite.retrievalDate).toBe("2026-08-26");
   });
 });

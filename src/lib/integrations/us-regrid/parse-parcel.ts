@@ -3,8 +3,9 @@
  *
  * Kept separate from the HTTP layer so it is fully unit-testable against
  * fixtures with no network and no API token. All provenance is stamped here:
- * a Regrid parcel is third-party aggregated data (a normalized mirror of the
- * county assessor record), so it is `official`/`machine-parsed`, carrying its
+ * a Regrid parcel is licensed, third-party aggregated data (a normalized
+ * mirror of the county assessor record), so it uses the project's
+ * `official`/`machine-parsed` provider-data provenance while carrying its
  * retrieval date and the token-stripped request URL as its locator.
  *
  * Field presence varies by county; each fact is emitted only when Regrid
@@ -20,7 +21,9 @@ import type { SiteId } from "../../jurisdiction/identifiers.js";
 import type {
   ParcelRecord,
   ParcelSale,
+  ParcelGeometry,
   PolygonCoordinates,
+  MultiPolygonCoordinates,
 } from "../../jurisdiction/providers.js";
 import { Area, Money } from "../../units/index.js";
 import type {
@@ -54,8 +57,8 @@ function source(ctx: ParseRegridContext): SourceRef {
   };
 }
 
-/** GeoJSON coordinates -> polygon rings (WGS84 [lng,lat]); first polygon of a MultiPolygon. */
-function toRings(geometry: RegridFeature["geometry"]): PolygonCoordinates | undefined {
+/** Validate and preserve GeoJSON Polygon/MultiPolygon geometry in WGS84. */
+function toGeometry(geometry: RegridFeature["geometry"]): ParcelGeometry | undefined {
   if (!geometry || geometry.coordinates == null) return undefined;
   const coords = geometry.coordinates as unknown;
   const isRing = (r: unknown): r is number[][] =>
@@ -67,10 +70,14 @@ function toRings(geometry: RegridFeature["geometry"]): PolygonCoordinates | unde
   const isPolygon = (g: unknown): g is number[][][] =>
     Array.isArray(g) && g.length > 0 && isRing(g[0]);
   if (geometry.type === "MultiPolygon") {
-    const first = Array.isArray(coords) ? (coords[0] as unknown) : undefined;
-    return isPolygon(first) ? (first as PolygonCoordinates) : undefined;
+    const polygons = Array.isArray(coords) ? coords : [];
+    return polygons.length > 0 && polygons.every(isPolygon)
+      ? { type: "MultiPolygon", coordinates: polygons as MultiPolygonCoordinates }
+      : undefined;
   }
-  return isPolygon(coords) ? (coords as PolygonCoordinates) : undefined;
+  return geometry.type === "Polygon" && isPolygon(coords)
+    ? { type: "Polygon", coordinates: coords as PolygonCoordinates }
+    : undefined;
 }
 
 function yearBuiltFact(
@@ -142,24 +149,32 @@ export function parseRegridFeature(
   const src = source(ctx);
 
   const apn = trimmed(fields.parcelnumb);
-  const path = trimmed(fields.ll_uuid) ?? trimmed(fields.path) ?? trimmed(feature.properties?.path);
+  const llUuid = trimmed(fields.ll_uuid);
+  const path = trimmed(fields.path) ?? trimmed(feature.properties?.path);
   const address = trimmed(fields.address);
 
   const identity = createParcelIdentity({
     ...(ctx.siteId !== undefined ? { siteId: ctx.siteId } : {}),
     apns: apn !== undefined ? [{ system: REGRID_SYSTEM, value: apn, kind: "APN" }] : [],
-    providerIds: path !== undefined ? [{ system: REGRID_SYSTEM, value: path, kind: "path" }] : [],
+    providerIds: [
+      ...(llUuid !== undefined
+        ? [{ system: REGRID_SYSTEM, value: llUuid, kind: "ll_uuid" }]
+        : []),
+      ...(path !== undefined
+        ? [{ system: REGRID_SYSTEM, value: path, kind: "path" }]
+        : []),
+    ],
     ...(address !== undefined ? { normalizedAddress: address } : {}),
   });
 
-  const rings = toRings(feature.geometry);
+  const parsedGeometry = toGeometry(feature.geometry);
   const geometry =
-    rings !== undefined
-      ? officialFact<PolygonCoordinates>(rings, src, { confidence: "high" })
+    parsedGeometry !== undefined
+      ? officialFact<ParcelGeometry>(parsedGeometry, src, { confidence: "high" })
       : unresolved(
           "parcel geometry",
           "user",
-          `Regrid parcel ${apn ?? path ?? "(unknown)"} returned no polygon; re-query or confirm the identifier.`,
+          `Regrid parcel ${apn ?? llUuid ?? path ?? "(unknown)"} returned no polygon; re-query or confirm the identifier.`,
         );
 
   const owner = trimmed(fields.owner);
@@ -202,6 +217,14 @@ export function parseRegridResponse(
       "parcel match",
       "user",
       `No Regrid parcel found for ${subject}. Confirm the point/address falls on a parcel Regrid covers.`,
+    );
+  }
+  if (features.length > 1) {
+    return unresolved(
+      "parcel match",
+      "user",
+      `Regrid returned multiple parcels for ${subject}. Select a parcel explicitly ` +
+        `by its Regrid ll_uuid/path instead of accepting an arbitrary first result.`,
     );
   }
   return parseRegridFeature(features[0]!, ctx);

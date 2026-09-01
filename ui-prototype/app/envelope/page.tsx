@@ -31,26 +31,27 @@ export default async function EnvelopePage({
             <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 8, padding: 20, display: "flex", flexDirection: "column", gap: 14 }}>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
                 <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 600, fontSize: 12, lineHeight: 1, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink3)" }}>
-                  Site model — by-right envelope
+                  Site model — coverage-cap study
                 </div>
                 <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1, color: "var(--ink3)" }}>
-                  Real footprint · schematic height
+                  Parcel geometry · schematic height
                 </div>
               </div>
 
               <MassingModel3D
-                rings={sa.parcelGeometry}
+                geometry={sa.parcelGeometry}
                 coverageFraction={subjectParcel.maxLotCoveragePct !== null ? subjectParcel.maxLotCoveragePct / 100 : null}
                 heightFt={envelope.maxHeightFt}
                 stories={envelope.maxHeightFt ? Math.max(1, Math.round(envelope.maxHeightFt / 14)) : 3}
                 floodLabel={floodLabel}
+                setbacksResolved={envelope.setbacksResolved}
                 address={subjectParcel.address}
                 heightPx={360}
               />
 
               {/* The real lot outline in plan, for footprint context. */}
               <ParcelMap
-                rings={sa.parcelGeometry}
+                geometry={sa.parcelGeometry}
                 lotAreaSf={subjectParcel.lotAreaSf}
                 floodLabel={null}
                 overlayLabel={overlayLabel}
@@ -84,10 +85,10 @@ export default async function EnvelopePage({
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                   <div style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 600, fontSize: 15, lineHeight: 1.2, color: "var(--ink)" }}>
-                    {envelope.maxHeightFt ?? "—"} ft height cap · ≈ 3 stories
+                    {envelope.maxHeightFt ?? "—"} ft height cap · ≈ {envelope.maxHeightFt ? Math.max(1, Math.round(envelope.maxHeightFt / 14)) : "—"} stories
                   </div>
                   <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.3, color: "var(--ink3)" }}>
-                    §540.410 — machine-parsed · shaded footprint is the by-right maximum
+                    §540.410 — machine-parsed · footprint uses lot coverage only
                   </div>
                 </div>
               </div>
@@ -99,23 +100,24 @@ export default async function EnvelopePage({
                 </span>
                 <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ width: 12, height: 10, background: "var(--blue-bg)", border: "1px solid var(--blue)" }} />
-                  Max footprint — algorithm ({subjectParcel.maxLotCoveragePct ?? "—"}% coverage)
+                  Coverage-cap study — algorithm ({subjectParcel.maxLotCoveragePct ?? "—"}%)
                 </span>
-                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ width: 14, height: 0, borderTop: "1px dashed var(--orange)" }} />
-                  Setbacks unresolved — footprint can only shrink
-                </span>
+                {!envelope.setbacksResolved ? (
+                  <span style={{ color: "var(--orange)" }}>
+                    Setbacks not applied — this is not a buildable polygon
+                  </span>
+                ) : null}
               </div>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ background: "var(--gray-bg)", border: "1px solid var(--line)", borderRadius: 8, padding: "14px 16px", fontFamily: "var(--font-sans), sans-serif", fontSize: 12, lineHeight: 1.5, color: "var(--ink2)" }}>
-                Vacant-or-redevelop reading: <strong style={{ color: "var(--ink)", fontWeight: 600 }}>this is the most you could build by right</strong> if the parcel were cleared today, before setbacks are resolved.
+                Preliminary reading: <strong style={{ color: "var(--ink)", fontWeight: 600 }}>this is not a by-right maximum</strong>. The diagram applies the lot-coverage and height caps to the parcel geometry, but contextual front/side/rear setbacks and frontage roles are not yet applied.
               </div>
 
               <div className="pg-2col">
                 <EnvelopeStat
-                  label="Buildable floor area"
+                  label="FAR-limited floor area"
                   value={(envelope.buildableGsf ?? 0).toLocaleString("en-US")}
                   unit="GSF"
                   badges={[
@@ -125,7 +127,7 @@ export default async function EnvelopePage({
                   source={`${(subjectParcel.lotAreaSf ?? 0).toLocaleString("en-US")} sf × FAR ${subjectParcel.maxFar} · §540.110`}
                 />
                 <EnvelopeStat
-                  label="Max footprint"
+                  label="Coverage-cap footprint"
                   value={(envelope.maxFootprintSf ?? 0).toLocaleString("en-US")}
                   unit="sf"
                   badges={[
@@ -193,7 +195,7 @@ export default async function EnvelopePage({
                     Envelope is provisional
                   </div>
                   <div style={{ fontFamily: "var(--font-sans), sans-serif", fontSize: 12, lineHeight: 1.5, color: "var(--ink2)" }}>
-                    Setbacks are still unresolved — the real footprint can only shrink from here, never grow. Parking adds no minimum (Ch. 541){sa.overlays.resolved && sa.overlays.names.length === 0 ? " and no overlay district applies" : ""}.
+                    Setbacks are still unresolved — the feasible footprint may be smaller than this coverage-cap study. Parking adds no minimum (Ch. 541){sa.overlays.resolved && sa.overlays.names.length === 0 ? " and no overlay district applies" : ""}.
                   </div>
                 </div>
               </div>

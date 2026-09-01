@@ -7,6 +7,7 @@ import {
   isUnresolved,
   approvalBlockers,
   createParcelIdentity,
+  polygonGeometry,
 } from "@/lib/jurisdiction/index.js";
 import type { ParcelRecord } from "@/lib/jurisdiction/index.js";
 import { Area, Money } from "@/lib/units/index.js";
@@ -20,7 +21,7 @@ const SRC = {
 function parcel(overrides: Partial<ParcelRecord> = {}): ParcelRecord {
   return {
     identity: createParcelIdentity({ apns: [], providerIds: [] }),
-    geometry: officialFact([[[0, 0]]], SRC),
+    geometry: officialFact(polygonGeometry([[[0, 0]]]), SRC),
     lotArea: officialFact(Area.squareFeet("8825"), SRC),
     ownerName: officialFact("SLMC DEVELOPMENT LLC", SRC),
     ...overrides,

@@ -38,6 +38,9 @@ export {
 
 export type {
   PolygonCoordinates,
+  MultiPolygonCoordinates,
+  ParcelGeometry,
+  ParcelGeometryInput,
   GeoPoint,
   NormalizedAddress,
   AddressProvider,
@@ -52,6 +55,11 @@ export type {
   HazardProvider,
   FinanceAssumptionProfile,
   TaxEstimateProfile,
+} from "./providers.js";
+export {
+  polygonGeometry,
+  parcelGeometryParts,
+  parcelGeometryRings,
 } from "./providers.js";
 
 export type { JurisdictionProfile } from "./profile.js";

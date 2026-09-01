@@ -134,7 +134,7 @@ export default function SearchPage() {
                     </button>
                   </div>
                   <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.4, color: "var(--ink3)" }}>
-                    Redevelopment adds the by-right building envelope and pro forma.
+                    Redevelopment adds a preliminary zoning-cap study and pro forma.
                   </div>
                 </div>
               </div>

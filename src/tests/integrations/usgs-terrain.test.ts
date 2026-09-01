@@ -7,7 +7,7 @@ import {
   type TerrainSample,
 } from "@/lib/integrations/us-usgs/index.js";
 import { isEvidence, isUnresolved } from "@/lib/jurisdiction/evidence.js";
-import type { PolygonCoordinates } from "@/lib/jurisdiction/providers.js";
+import type { ParcelGeometry, PolygonCoordinates } from "@/lib/jurisdiction/providers.js";
 
 const CTX = {
   retrievalDate: "2026-08-26",
@@ -91,6 +91,17 @@ describe("UsgsTerrainProvider", () => {
     }
   });
 
+  it("samplePoints includes vertices from every MultiPolygon part", () => {
+    const shifted = SQUARE[0]!.map(([lng, lat]) => [lng! + 0.02, lat!]);
+    const multipart: ParcelGeometry = {
+      type: "MultiPolygon",
+      coordinates: [SQUARE, [shifted]],
+    };
+    const provider = new UsgsTerrainProvider({ gridSize: 2, maxSamples: 24 });
+    const pts = provider.samplePoints(multipart);
+    expect(pts.some((p) => p.lng > -93.28)).toBe(true);
+  });
+
   it("terrain samples EPQS per point and summarizes", async () => {
     // Elevation rises with longitude so min/max differ deterministically.
     const provider = new UsgsTerrainProvider({
@@ -109,6 +120,26 @@ describe("UsgsTerrainProvider", () => {
       result.value.minElevation.toMeters(),
     );
     expect(result.source?.label).toContain("3DEP");
+  });
+
+  it("limits concurrent EPQS requests while avoiding serial sampling", async () => {
+    let active = 0;
+    let peak = 0;
+    const provider = new UsgsTerrainProvider({
+      gridSize: 3,
+      maxSamples: 12,
+      concurrency: 3,
+      fetchImpl: async () => {
+        active += 1;
+        peak = Math.max(peak, active);
+        await new Promise((resolve) => setTimeout(resolve, 2));
+        active -= 1;
+        return { ok: true, status: 200, json: async () => ({ value: 250 }) };
+      },
+    });
+    await provider.terrain(SQUARE);
+    expect(peak).toBeGreaterThan(1);
+    expect(peak).toBeLessThanOrEqual(3);
   });
 
   it("drops no-data points and returns Unresolved if too few remain", async () => {

@@ -20,9 +20,10 @@ import type { IsoDate } from "../../jurisdiction/evidence.js";
 import type { Evidence, Unresolved } from "../../jurisdiction/evidence.js";
 import type {
   HazardProvider,
-  PolygonCoordinates,
+  ParcelGeometryInput,
   TerrainSummary,
 } from "../../jurisdiction/providers.js";
+import { parcelGeometryParts } from "../../jurisdiction/providers.js";
 import type { EpqsResponse, TerrainSample } from "./epqs-response.js";
 import { parseTerrain, readEpqsElevation } from "./parse-terrain.js";
 
@@ -40,6 +41,8 @@ export interface UsgsTerrainConfig {
   readonly gridSize?: number;
   /** Hard cap on total sample points (vertices + grid). Default 24. */
   readonly maxSamples?: number;
+  /** Maximum simultaneous EPQS point requests. Default 6. */
+  readonly concurrency?: number;
   readonly timeoutMs?: number;
 }
 
@@ -61,6 +64,7 @@ export class UsgsTerrainProvider implements HazardProvider {
   private readonly now: () => Date;
   private readonly gridSize: number;
   private readonly maxSamples: number;
+  private readonly concurrency: number;
   private readonly timeoutMs: number;
 
   constructor(config: UsgsTerrainConfig = {}) {
@@ -72,6 +76,7 @@ export class UsgsTerrainProvider implements HazardProvider {
     this.now = config.now ?? (() => new Date());
     this.gridSize = Math.max(2, config.gridSize ?? 3);
     this.maxSamples = Math.max(2, config.maxSamples ?? 24);
+    this.concurrency = Math.max(1, Math.floor(config.concurrency ?? 6));
     this.timeoutMs = config.timeoutMs ?? 10_000;
   }
 
@@ -85,23 +90,25 @@ export class UsgsTerrainProvider implements HazardProvider {
     return `${this.baseUrl}?${params.toString()}`;
   }
 
-  /** Candidate sample points: the outer-ring vertices plus an interior grid. */
-  samplePoints(geometry: PolygonCoordinates): { lng: number; lat: number }[] {
-    const outer = geometry[0] ?? [];
+  /** Candidate sample points from every polygon part, including interior grids. */
+  samplePoints(geometry: ParcelGeometryInput): { lng: number; lat: number }[] {
     const points: { lng: number; lat: number }[] = [];
 
-    for (const v of outer) {
-      if (v.length >= 2) points.push({ lng: v[0]!, lat: v[1]! });
-    }
+    for (const polygon of parcelGeometryParts(geometry)) {
+      const outer = polygon[0] ?? [];
+      for (const v of outer) {
+        if (v.length >= 2) points.push({ lng: v[0]!, lat: v[1]! });
+      }
 
-    const [minLng, minLat, maxLng, maxLat] = bbox(outer);
-    if (Number.isFinite(minLng)) {
-      const n = this.gridSize;
-      for (let i = 1; i < n; i++) {
-        for (let j = 1; j < n; j++) {
-          const lng = minLng + ((maxLng - minLng) * i) / n;
-          const lat = minLat + ((maxLat - minLat) * j) / n;
-          if (pointInRing(lng, lat, outer)) points.push({ lng, lat });
+      const [minLng, minLat, maxLng, maxLat] = bbox(outer);
+      if (Number.isFinite(minLng)) {
+        const n = this.gridSize;
+        for (let i = 1; i < n; i++) {
+          for (let j = 1; j < n; j++) {
+            const lng = minLng + ((maxLng - minLng) * i) / n;
+            const lat = minLat + ((maxLat - minLat) * j) / n;
+            if (pointInRing(lng, lat, outer)) points.push({ lng, lat });
+          }
         }
       }
     }
@@ -110,17 +117,16 @@ export class UsgsTerrainProvider implements HazardProvider {
   }
 
   async terrain(
-    geometry: PolygonCoordinates,
+    geometry: ParcelGeometryInput,
   ): Promise<Evidence<TerrainSummary> | Unresolved> {
     const points = this.samplePoints(geometry);
-    const samples: TerrainSample[] = [];
-
-    for (const p of points) {
-      const elev = await this.fetchElevation(p.lng, p.lat);
-      if (elev !== undefined) {
-        samples.push({ lng: p.lng, lat: p.lat, elevationMeters: elev });
-      }
-    }
+    const elevations = await mapConcurrent(points, this.concurrency, (p) =>
+      this.fetchElevation(p.lng, p.lat),
+    );
+    const samples: TerrainSample[] = points.flatMap((p, i) => {
+      const elevationMeters = elevations[i];
+      return elevationMeters === undefined ? [] : [{ ...p, elevationMeters }];
+    });
 
     return parseTerrain(samples, {
       retrievalDate: isoDate(this.now()),
@@ -212,6 +218,26 @@ function dedupe(
       out.push(p);
     }
   }
+  return out;
+}
+
+/** Ordered async map with a small worker pool (no unbounded request burst). */
+async function mapConcurrent<T, R>(
+  values: readonly T[],
+  concurrency: number,
+  map: (value: T) => Promise<R>,
+): Promise<R[]> {
+  const out = new Array<R>(values.length);
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    while (next < values.length) {
+      const index = next++;
+      out[index] = await map(values[index]!);
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, values.length) }, () => worker()),
+  );
   return out;
 }
 

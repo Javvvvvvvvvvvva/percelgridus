@@ -110,8 +110,13 @@ export class RegridParcelProvider implements ParcelProvider {
     const { full, locator } = this.url("/parcels/point", {
       lat: String(point.lat),
       lon: String(point.lng),
-      limit: "1",
+      // Ask for two so overlapping/stacked records surface as ambiguous. A
+      // `limit=1` response cannot prove that the selected parcel is unique.
+      limit: "2",
       return_geometry: "true",
+      return_stacked: "true",
+      return_zoning: "false",
+      return_matched_buildings: "false",
     });
     const body = await this.fetchJson(full);
     return parseRegridResponse(body, { retrievalDate: this.retrievalDate(), locator }, `point (${point.lng}, ${point.lat})`);
@@ -120,30 +125,50 @@ export class RegridParcelProvider implements ParcelProvider {
   async byAddress(normalizedAddress: string): Promise<ParcelRecord | Unresolved> {
     const { full, locator } = this.url("/parcels/address", {
       query: normalizedAddress,
-      limit: "1",
+      // Regrid address search can return similar addresses. Fetch a second
+      // candidate so the parser can reject ambiguity instead of guessing.
+      limit: "2",
       return_geometry: "true",
+      return_zoning: "false",
+      return_matched_buildings: "false",
     });
     const body = await this.fetchJson(full);
     return parseRegridResponse(body, { retrievalDate: this.retrievalDate(), locator }, normalizedAddress);
   }
 
   async byIdentifier(id: ExternalIdentifier): Promise<ParcelRecord | Unresolved> {
-    // Regrid's stable parcel path is the addressable id; an assessor APN alone
-    // is not globally unique, so it is not resolved here (query by point/address
-    // instead) rather than guessing a parcel.
-    const isPath = id.system === REGRID_SYSTEM && (id.kind === "path" || id.value.includes("/"));
-    if (!isPath) {
+    // ll_uuid and path are distinct Regrid identifiers with distinct endpoints.
+    // An assessor APN alone is not globally unique, so it is deliberately not
+    // resolved here rather than guessing a parcel.
+    const isRegrid = id.system === REGRID_SYSTEM;
+    const isUuid = isRegrid && id.kind?.toLowerCase() === "ll_uuid";
+    const isPath =
+      isRegrid && (id.kind?.toLowerCase() === "path" || id.value.includes("/"));
+    if (!isUuid && !isPath) {
       return unresolved(
         "parcel",
         "user",
-        `Regrid resolves by its stable parcel path (or by point/address), not by ` +
+        `Regrid resolves by its stable ll_uuid/path (or by point/address), not by ` +
           `the ${id.kind ?? "external"} identifier "${id.value}" alone; re-query by point or address.`,
       );
     }
-    const { full, locator } = this.url(`/parcels/${encodeURIComponent(id.value)}`, {
-      return_geometry: "true",
-    });
+    const { full, locator } = isUuid
+      ? this.url(`/parcels/${encodeURIComponent(id.value)}`, {
+          return_geometry: "true",
+          return_zoning: "false",
+          return_matched_buildings: "false",
+        })
+      : this.url("/parcels/path", {
+          path: id.value,
+          return_geometry: "true",
+          return_zoning: "false",
+          return_matched_buildings: "false",
+        });
     const body = await this.fetchJson(full);
-    return parseRegridResponse(body, { retrievalDate: this.retrievalDate(), locator }, `path ${id.value}`);
+    return parseRegridResponse(
+      body,
+      { retrievalDate: this.retrievalDate(), locator },
+      `${isUuid ? "ll_uuid" : "path"} ${id.value}`,
+    );
   }
 }

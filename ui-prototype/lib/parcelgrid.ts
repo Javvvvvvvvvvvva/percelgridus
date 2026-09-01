@@ -4,7 +4,7 @@
  * The prototype shipped with hand-written mock data (`mock-data.ts`,
  * `financials.ts`). This module replaces that with the real thing: it runs the
  * library's `intakeSite` pipeline (Census → Hennepin → FEMA → USGS → zoning),
- * builds the decision report and the by-right massing program, and returns a
+ * builds the decision report and preliminary zoning-cap program, and returns a
  * plain, serializable `SiteAnalysis` the pages render. Every fact keeps its
  * provenance/verification, and unresolved values come back `null` rather than a
  * fabricated number — the same contract the library enforces.
@@ -38,6 +38,7 @@ import type {
   FinanceAssumptionProfile,
 } from "../../src/lib/jurisdiction/index.js";
 import { Area, Money } from "../../src/lib/units/index.js";
+import type { ParcelGeometryUi } from "@/lib/parcel-geometry";
 
 export interface ParcelSummary {
   readonly address: string;
@@ -88,6 +89,8 @@ export interface EnvelopeSummary {
   readonly maxHeightFt: number | null;
   readonly indicativeUnits: number | null;
   readonly gsfPerUnit: number;
+  /** False means the footprint is only a coverage cap, not a buildable polygon. */
+  readonly setbacksResolved: boolean;
 }
 
 export interface ProFormaSeed {
@@ -97,7 +100,7 @@ export interface ProFormaSeed {
   readonly rentPerUnitMonth: number;
   readonly hardCostPerGsf: number;
   readonly exitCapRatePct: number;
-  // Resolved by-right facts + fixed assumptions the client feeds to the REAL
+  // Resolved zoning-cap facts + fixed assumptions the client feeds to the REAL
   // finance engine (src/lib/finance) so the sliders recompute with the same
   // decimal-exact math as the report — no separate UI copy of the pro forma.
   readonly lotAreaSf: number | null;
@@ -135,8 +138,8 @@ export interface SiteAnalysis {
   readonly assessment: AssessmentSummary | null;
   readonly overlays: OverlaysSummary;
   readonly parking: ParkingSummary | null;
-  /** The parcel boundary rings (WGS84 [lng,lat]) for the site map, when resolved. */
-  readonly parcelGeometry: number[][][] | null;
+  /** GeoJSON-typed parcel boundary, preserving every MultiPolygon part. */
+  readonly parcelGeometry: ParcelGeometryUi | null;
   /** By-right 1–3 family dwelling uses (Table 545-1), when the district resolves them. */
   readonly allowedUses: readonly string[] | null;
   /** Why the parcel could not be resolved, when it wasn't (honest, not fabricated). */
@@ -157,7 +160,7 @@ export interface ParcelCandidateUi {
 }
 
 /**
- * One by-right redevelopment option — a permitted dwelling type with its own
+ * One preliminary redevelopment option — a permitted dwelling type with its own
  * ordinance FAR tier (Table 540-2), so the massing differs. The finance inputs
  * are shared across scenarios; the client runs the real engine per scenario so
  * they compare apples-to-apples and move with the sliders.
@@ -341,6 +344,7 @@ export async function getSiteAnalysis(
     maxHeightFt: parcelSummary.maxHeightFt,
     indicativeUnits: units,
     gsfPerUnit: a.avgUnitGsf,
+    setbacksResolved: zoning ? isEvidence(zoning.minSetbacks) : false,
   };
 
   const flood: FloodSummary | null =
@@ -401,10 +405,11 @@ export async function getSiteAnalysis(
     resolved: overlayItems.every(isEvidence),
   };
 
-  // Parcel boundary rings for the site map (WGS84 [lng,lat]).
-  const parcelGeometry: number[][][] | null =
+  // Parcel boundary for the site map (WGS84 [lng,lat]); keep MultiPolygons
+  // intact so renderers never analyze a silently truncated parcel.
+  const parcelGeometry: ParcelGeometryUi | null =
     parcel && isEvidence(parcel.geometry)
-      ? (parcel.geometry.value as number[][][])
+      ? parcel.geometry.value
       : null;
 
   // Minimum off-street parking — Ch. 541 citywide zero.

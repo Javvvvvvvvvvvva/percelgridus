@@ -24,8 +24,9 @@ import type { Evidence, Unresolved } from "../../jurisdiction/evidence.js";
 import type {
   FloodHazard,
   HazardProvider,
-  PolygonCoordinates,
+  ParcelGeometryInput,
 } from "../../jurisdiction/providers.js";
+import { parcelGeometryRings } from "../../jurisdiction/providers.js";
 import type { NfhlResponse } from "./nfhl-response.js";
 import { parseFloodZones } from "./parse-flood.js";
 
@@ -88,9 +89,9 @@ export class FemaFloodProvider implements HazardProvider {
    * overflows the server's URL/header limits and returns HTTP 414/431, which
    * would abort the whole site analysis. A POST body has no such limit.
    */
-  queryBody(geometry: PolygonCoordinates): string {
+  queryBody(geometry: ParcelGeometryInput): string {
     const esriPolygon = JSON.stringify({
-      rings: geometry,
+      rings: parcelGeometryRings(geometry),
       spatialReference: { wkid: 4326 },
     });
     return new URLSearchParams({
@@ -105,7 +106,7 @@ export class FemaFloodProvider implements HazardProvider {
   }
 
   async flood(
-    geometry: PolygonCoordinates,
+    geometry: ParcelGeometryInput,
   ): Promise<Evidence<FloodHazard> | Unresolved> {
     const body = this.queryBody(geometry);
     const controller = new AbortController();

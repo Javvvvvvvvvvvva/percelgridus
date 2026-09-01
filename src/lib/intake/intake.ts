@@ -43,7 +43,7 @@ import type {
   JurisdictionProfile,
   NormalizedAddress,
   ParcelRecord,
-  PolygonCoordinates,
+  ParcelGeometry,
   SiteId,
   TerrainSummary,
   Unresolved,
@@ -228,7 +228,7 @@ export async function intakeSite(
     };
   }
 
-  const geometry: PolygonCoordinates | undefined = isEvidence(parcel.geometry)
+  const geometry: ParcelGeometry | undefined = isEvidence(parcel.geometry)
     ? parcel.geometry.value
     : undefined;
 

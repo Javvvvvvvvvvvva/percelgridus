@@ -40,7 +40,8 @@ suite("HennepinParcelProvider (live)", () => {
       );
       expect(isEvidence(record.geometry)).toBe(true);
       if (isEvidence(record.geometry)) {
-        expect(record.geometry.value[0]!.length).toBeGreaterThanOrEqual(4);
+        expect(record.geometry.value.type).toBe("Polygon");
+        expect(record.geometry.value.coordinates[0]!.length).toBeGreaterThanOrEqual(4);
       }
       if (isEvidence(record.lotArea)) {
         expect(record.lotArea.value.toSquareFeet()).toBeGreaterThan(0);

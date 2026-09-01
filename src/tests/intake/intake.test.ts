@@ -5,6 +5,7 @@ import { JurisdictionRegistry } from "@/lib/jurisdiction/index.js";
 import {
   createParcelIdentity,
   officialFact,
+  polygonGeometry,
   unresolved,
 } from "@/lib/jurisdiction/index.js";
 import {
@@ -44,7 +45,7 @@ function resolvedParcel(withGeometry: boolean): ParcelRecord {
   return {
     identity,
     geometry: withGeometry
-      ? officialFact(GEOM, SOURCE)
+      ? officialFact(polygonGeometry(GEOM), SOURCE)
       : unresolved("parcel geometry", "surveyor", "survey the lot"),
     lotArea: officialFact(Area.squareFeet("5000"), SOURCE),
     ownerName: officialFact("Jane Doe", SOURCE),

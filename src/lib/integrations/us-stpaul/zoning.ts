@@ -23,9 +23,10 @@ import type { ParcelIdentity } from "../../jurisdiction/identifiers.js";
 import type {
   ByRightEnvelope,
   DevelopmentIntent,
-  PolygonCoordinates,
+  ParcelGeometryInput,
   ZoningEvidenceProvider,
 } from "../../jurisdiction/providers.js";
+import { parcelGeometryRings } from "../../jurisdiction/providers.js";
 import { unresolved } from "../../jurisdiction/evidence.js";
 import {
   SAINT_PAUL_JURISDICTION_ID,
@@ -87,9 +88,9 @@ export class StPaulZoningProvider implements ZoningEvidenceProvider {
     this.timeoutMs = config.timeoutMs ?? 10_000;
   }
 
-  private queryBody(geometry: PolygonCoordinates): string {
+  private queryBody(geometry: ParcelGeometryInput): string {
     const esriPolygon = JSON.stringify({
-      rings: geometry,
+      rings: parcelGeometryRings(geometry),
       spatialReference: { wkid: 4326 },
     });
     return new URLSearchParams({
@@ -133,11 +134,11 @@ export class StPaulZoningProvider implements ZoningEvidenceProvider {
 
   async envelopeFor(
     identity: ParcelIdentity,
-    geometry?: PolygonCoordinates,
+    geometry?: ParcelGeometryInput,
     _intent?: DevelopmentIntent,
   ): Promise<ByRightEnvelope> {
     const subject = identity.normalizedAddress ?? `site ${identity.siteId}`;
-    if (geometry === undefined || geometry.length === 0) {
+    if (geometry === undefined || parcelGeometryRings(geometry).length === 0) {
       return buildStPaulEnvelope(
         unresolved(
           "zoning district",

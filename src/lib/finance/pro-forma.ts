@@ -198,10 +198,10 @@ export function computeProForma(inputs: ProFormaInputs): ProForma {
 // ─────────────────────────── Site massing program ───────────────────────────
 
 /**
- * The by-right development envelope for a site — the massing inputs a site
- * plan / blueprint is built from. Every field carries its provenance; unknowns
- * stay Unresolved so a designer sees exactly which constraint is confirmed and
- * which is still a preliminary reference.
+ * The zoning-cap program for a site. FAR, lot coverage, and height can resolve
+ * before setbacks do, so `maxFootprint` is a coverage cap rather than an actual
+ * buildable polygon. Every field carries provenance and unresolved constraints
+ * remain visible to the downstream designer.
  */
 export interface SiteMassingProgram {
   readonly zoningDistrict: EvidenceOrUnresolved<string>;
@@ -221,9 +221,8 @@ export interface SiteMassingProgram {
 }
 
 /**
- * Assemble the massing program from a resolved lot area, the by-right zoning
- * envelope, and a computed pro forma. This is the hand-off to a site-plan
- * designer: the buildable envelope plus its provenance.
+ * Assemble the massing inputs from lot area, zoning evidence, and a computed
+ * pro forma. This is a constraint hand-off, not a final buildable envelope.
  */
 export function buildSiteMassingProgram(
   lotArea: EvidenceOrUnresolved<Area>,

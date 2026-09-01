@@ -27,7 +27,9 @@ import type { SiteId } from "../../jurisdiction/identifiers.js";
 import type {
   ParcelRecord,
   ParcelSale,
-  PolygonCoordinates,
+} from "../../jurisdiction/providers.js";
+import {
+  polygonGeometry,
 } from "../../jurisdiction/providers.js";
 import type { EvidenceOrUnresolved } from "../../jurisdiction/evidence.js";
 import { Area, Money } from "../../units/index.js";
@@ -195,7 +197,7 @@ export function parseParcelFeature(
   const rings = feature.geometry?.rings;
   const geometry =
     rings && rings.length > 0
-      ? officialFact<PolygonCoordinates>(rings, src, { confidence: "high" })
+      ? officialFact(polygonGeometry(rings), src, { confidence: "high" })
       : unresolved(
           "parcel geometry",
           "user",

@@ -22,7 +22,7 @@ function assume<T>(value: T): EvidenceOrUnresolved<T> {
 
 /** Everything the engine needs, split into resolved site facts + slider inputs. */
 export interface LiveProFormaInputs {
-  // Resolved from the by-right envelope (real facts).
+  // Resolved zoning-cap facts; contextual gaps remain outside this calculator.
   readonly lotAreaSf: number;
   readonly maxFar: number;
   readonly maxLotCoverage: number; // fraction 0..1
