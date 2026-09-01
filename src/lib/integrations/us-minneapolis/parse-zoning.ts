@@ -1,7 +1,8 @@
 /**
  * Pure parser: Minneapolis primary-zoning features -> a ByRightEnvelope whose
- * `zoningDistrict` is an official fact and whose by-right numeric rules are
- * still Unresolved (see zoning-shared).
+ * `zoningDistrict` is an official fact. `buildEnvelope` can merge the supported
+ * Chapter 540 numeric rules while unsupported contextual fields stay
+ * Unresolved (see zoning-shared).
  *
  * Kept separate from the HTTP layer so it is fully unit-testable against
  * fixtures with no network. Split-zoned parcels matter: a lot that intersects

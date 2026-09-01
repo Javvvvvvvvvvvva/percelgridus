@@ -8,14 +8,13 @@
  *   - address  → U.S. Census Geocoder      (us-census)
  *   - parcel   → Hennepin County GIS       (us-hennepin)
  *   - hazard   → FEMA NFHL flood + USGS 3DEP terrain
- *   - zoning   → City of Minneapolis primary-zoning layer (district only)
+ *   - zoning   → City primary/built-form/overlay GIS + parsed rule tables
  *
- * The zoning adapter resolves the official zoning DISTRICT; its by-right
- * numeric rules, plus finance and tax, are not yet sourced and surface as
- * Unresolved (see parse-zoning and pending-finance-tax). The profile is
- * therefore contract-complete and type-safe today, and each pending piece is
- * swapped out in place without any downstream change (README-US §"Proposed
- * adapter boundary").
+ * The zoning adapter resolves primary and built-form districts, FAR, coverage,
+ * height, selected residential uses, citywide minimum parking, and overlays.
+ * Contextual setbacks and discretionary approvals remain Unresolved; finance
+ * and tax assumptions are also pending. Each gap stays explicit and can be
+ * replaced without downstream contract changes.
  *
  * The reusable core never names a country; it reaches all of this only through
  * {@link JurisdictionProfile}.
@@ -53,7 +52,7 @@ export interface MinneapolisProfileConfig extends UsNationalConfig {
 
 /**
  * Build the Minneapolis profile. Live providers are constructed with the
- * supplied (or default) config; zoning/finance/tax are the pending adapters.
+ * supplied (or default) config; finance/tax remain pending adapters.
  */
 export function createMinneapolisProfile(
   config: MinneapolisProfileConfig = {},

@@ -27,12 +27,20 @@ describe("parseRegridResponse", () => {
     if (isUnresolved(rec)) throw new Error("expected a parcel record");
 
     expect(findIdentifier(rec.identity, REGRID_SYSTEM)?.value).toBe("3302924110099");
-    expect(rec.identity.providerIds[0]?.value).toBe("abc-123-uuid");
+    expect(rec.identity.providerIds).toEqual([
+      { system: REGRID_SYSTEM, value: "abc-123-uuid", kind: "ll_uuid" },
+      {
+        system: REGRID_SYSTEM,
+        value: "us/mn/hennepin/minneapolis/x1",
+        kind: "path",
+      },
+    ]);
     expect(rec.identity.normalizedAddress).toContain("2320 COLFAX");
 
     if (!isEvidence(rec.geometry)) throw new Error("expected geometry");
     expect(rec.geometry.provenance).toBe("official");
-    expect(rec.geometry.value[0]!.length).toBe(5);
+    expect(rec.geometry.value.type).toBe("Polygon");
+    expect(rec.geometry.value.coordinates[0]!.length).toBe(5);
 
     if (!isEvidence(rec.lotArea)) throw new Error("expected lot area");
     expect(rec.lotArea.value.toSquareFeet()).toBeCloseTo(8825, 0);
@@ -53,11 +61,13 @@ describe("parseRegridResponse", () => {
     expect(rec.geometry.source?.locator).toContain("token=REDACTED");
   });
 
-  it("derives area from acres, takes the first polygon of a MultiPolygon, and omits blank facts", () => {
+  it("derives area from acres, preserves MultiPolygon geometry, and omits blank facts", () => {
     const rec = parseRegridResponse(fixture("regrid-parcel-acresonly"), CTX, "point");
     if (isUnresolved(rec)) throw new Error("expected a parcel record");
     if (!isEvidence(rec.geometry)) throw new Error("expected geometry");
-    expect(rec.geometry.value[0]!.length).toBe(5); // unwrapped from MultiPolygon
+    expect(rec.geometry.value.type).toBe("MultiPolygon");
+    expect(rec.geometry.value.coordinates).toHaveLength(1);
+    expect(rec.geometry.value.coordinates[0]![0]!.length).toBe(5);
     if (!isEvidence(rec.lotArea)) throw new Error("expected area");
     expect(rec.lotArea.value.toSquareFeet()).toBeCloseTo(0.25 * 43560, 0);
     // "0000" year, $0 value/sale are omitted, never asserted.
@@ -74,6 +84,16 @@ describe("parseRegridResponse", () => {
     const err = parseRegridResponse(fixture("regrid-parcel-error"), CTX, "x");
     expect(isUnresolved(err)).toBe(true);
     if (isUnresolved(err)) expect(err.requiredAction).toContain("Invalid token");
+  });
+
+  it("returns Unresolved instead of guessing when more than one parcel matches", () => {
+    const one = fixture("regrid-parcel-match").parcels!.features![0]!;
+    const ambiguous: RegridParcelsResponse = {
+      parcels: { type: "FeatureCollection", features: [one, one] },
+    };
+    const rec = parseRegridResponse(ambiguous, CTX, "an ambiguous address");
+    expect(isUnresolved(rec)).toBe(true);
+    if (isUnresolved(rec)) expect(rec.requiredAction).toContain("multiple parcels");
   });
 });
 
@@ -99,6 +119,8 @@ describe("RegridParcelProvider", () => {
     // The real request carries the token...
     expect(calledUrl).toContain("token=secret-token-123");
     expect(calledUrl).toContain("/parcels/point");
+    expect(calledUrl).toContain("limit=2");
+    expect(calledUrl).toContain("return_zoning=false");
     // ...but the provenance locator never does.
     if (!isEvidence(rec.geometry)) throw new Error("expected geometry");
     expect(rec.geometry.source?.locator).not.toContain("secret-token-123");
@@ -119,13 +141,28 @@ describe("RegridParcelProvider", () => {
     expect(decodeURIComponent(calledUrl).replace(/\+/g, " ")).toContain("2320 Colfax");
   });
 
-  it("byIdentifier resolves a Regrid path but not a bare APN", async () => {
+  it("byIdentifier uses distinct Regrid ll_uuid/path endpoints and rejects a bare APN", async () => {
+    const calledUrls: string[] = [];
     const provider = new RegridParcelProvider({
       token: "t",
-      fetchImpl: async () => okResponse(fixture("regrid-parcel-match")),
+      fetchImpl: async (url) => {
+        calledUrls.push(url);
+        return okResponse(fixture("regrid-parcel-match"));
+      },
+    });
+    const byUuid = await provider.byIdentifier({
+      system: REGRID_SYSTEM,
+      value: "8b6f4f51-58ad-4969-93b3-fdfb348a7084",
+      kind: "ll_uuid",
     });
     const byPath = await provider.byIdentifier({ system: REGRID_SYSTEM, value: "us/mn/hennepin/x", kind: "path" });
+    expect(isUnresolved(byUuid)).toBe(false);
     expect(isUnresolved(byPath)).toBe(false);
+    expect(calledUrls[0]).toContain(
+      "/parcels/8b6f4f51-58ad-4969-93b3-fdfb348a7084",
+    );
+    expect(calledUrls[1]).toContain("/parcels/path?");
+    expect(decodeURIComponent(calledUrls[1]!)).toContain("path=us/mn/hennepin/x");
     const byApn = await provider.byIdentifier({ system: "county-assessor", value: "12345", kind: "APN" });
     expect(isUnresolved(byApn)).toBe(true);
   });

@@ -7,7 +7,7 @@ PARCELGRID library.
 
 `lib/parcelgrid.ts` is a **server-side bridge**: it runs the library's
 `intakeSite` pipeline (Census → Hennepin → FEMA → USGS → zoning), builds the
-decision report + by-right massing program + pro forma, and returns a plain
+decision report + preliminary zoning-cap massing program + pro forma, and returns a plain
 `SiteAnalysis` the pages render. Every fact keeps its provenance/verification;
 unresolved values come back `null`, never a fabricated number.
 
@@ -46,7 +46,7 @@ screens"): the pages carry real `Money`/`Length`/`Area` values and
 items, never a fabricated number.
 
 Still a prototype, not the production UI: the landing map is static (no
-state-click interaction yet), and only Minneapolis renders full by-right rules
+state-click interaction yet), and only Minneapolis renders its currently parsed zoning rules
 (other jurisdictions surface the district with rules pending — see
 `PROJECT_MEMORY.md`). It is not deployed.
 

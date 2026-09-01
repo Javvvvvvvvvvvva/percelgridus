@@ -17,7 +17,7 @@ import type { ParcelIdentity } from "../../jurisdiction/identifiers.js";
 import type {
   ByRightEnvelope,
   DevelopmentIntent,
-  PolygonCoordinates,
+  ParcelGeometryInput,
   ZoningEvidenceProvider,
 } from "../../jurisdiction/providers.js";
 import { buildEnvelope } from "./parse-zoning.js";
@@ -41,7 +41,7 @@ export class MinneapolisPendingZoningProvider implements ZoningEvidenceProvider 
    */
   async envelopeFor(
     _identity: ParcelIdentity,
-    _geometry?: PolygonCoordinates,
+    _geometry?: ParcelGeometryInput,
     _intent?: DevelopmentIntent,
   ): Promise<ByRightEnvelope> {
     return buildEnvelope(

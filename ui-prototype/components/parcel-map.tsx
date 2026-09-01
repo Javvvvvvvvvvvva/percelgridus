@@ -1,4 +1,5 @@
 import { Badge } from "@/components/badge";
+import { geometryParts, type ParcelGeometryUi } from "@/lib/parcel-geometry";
 
 /**
  * Site map — renders the parcel's REAL boundary polygon (Hennepin GIS geometry,
@@ -6,12 +7,12 @@ import { Badge } from "@/components/badge";
  * provider + key at deploy); this draws the actual lot shape, oriented north-up,
  * with a scale bar and the flood/overlay context as chips — honest and offline.
  *
- * Optionally overlays the by-right max footprint (the lot polygon scaled toward
- * its centroid so the drawn area is the coverage fraction of the lot) — a
- * schematic, clearly labelled, used by the envelope screen.
+ * Optionally overlays a lot-coverage-cap study (the lot polygon scaled toward
+ * its centroid so the drawn area is the coverage fraction of the lot). It is
+ * deliberately not described as a setback offset or legal buildable polygon.
  */
 export function ParcelMap({
-  rings,
+  geometry,
   lotAreaSf,
   floodLabel,
   overlayLabel,
@@ -22,7 +23,7 @@ export function ParcelMap({
   compact = false,
   boundarySource,
 }: {
-  rings: number[][][] | null;
+  geometry: ParcelGeometryUi | null;
   lotAreaSf: number | null;
   floodLabel: string | null;
   overlayLabel: string | null;
@@ -40,10 +41,10 @@ export function ParcelMap({
   const H = heightPx;
   const PAD = compact ? 20 : 34;
 
-  const projected = rings ? projectRings(rings, W, H, PAD) : null;
+  const projected = geometry ? projectGeometry(geometry, W, H, PAD) : null;
   const footprintPaths =
     projected && footprintFraction && footprintFraction > 0
-      ? scaleRingsToCentroid(projected.points, Math.sqrt(footprintFraction))
+      ? scalePolygonsToCentroid(projected.polygons, Math.sqrt(footprintFraction))
       : null;
 
   return (
@@ -94,11 +95,12 @@ export function ParcelMap({
                 stroke="var(--ink2)"
                 strokeWidth={footprintPaths ? 2 : 2}
                 strokeLinejoin="round"
+                fillRule="evenodd"
               />
             ))}
             {footprintPaths ? (
               <>
-                {/* setback zone (between lot line and footprint) hinted by dash */}
+                {/* Coverage-only study; this is not a computed setback line. */}
                 {footprintPaths.map((d, i) => (
                   <path
                     key={`fp-${i}`}
@@ -176,9 +178,10 @@ export function ParcelMap({
   );
 }
 
-/** Equirectangular projection (latitude-corrected) of the rings into the frame. */
-function projectRings(rings: number[][][], W: number, H: number, pad: number) {
-  const pts = rings.flat();
+/** Equirectangular projection of every Polygon/MultiPolygon part. */
+function projectGeometry(geometry: ParcelGeometryUi, W: number, H: number, pad: number) {
+  const polygonParts = geometryParts(geometry);
+  const pts = polygonParts.flat(2);
   let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
   for (const [lng, lat] of pts) {
     if (lng < minLng) minLng = lng;
@@ -200,10 +203,10 @@ function projectRings(rings: number[][][], W: number, H: number, pad: number) {
   const py = (lat: number) => offY + (maxLat - lat) * scale; // flip Y
 
   // Projected pixel-space rings (reused by the footprint overlay).
-  const points: number[][][] = rings.map((ring) =>
-    ring.map((p) => [px(p[0]!), py(p[1]!)]),
+  const polygons: number[][][][] = polygonParts.map((polygon) =>
+    polygon.map((ring) => ring.map((p) => [px(p[0]!), py(p[1]!)]) ),
   );
-  const paths = points.map(ringToPath);
+  const paths = polygons.map((polygon) => polygon.map(ringToPath).join(" "));
 
   // Scale bar: pick a "nice" round distance close to ~1/4 of the frame width.
   const metersPerDeg = 111_320;
@@ -213,12 +216,14 @@ function projectRings(rings: number[][][], W: number, H: number, pad: number) {
   const scaleBarPx = (nice / worldWmeters) * drawW;
   const scaleBarLabel = nice >= 1 ? `${nice} m` : `${Math.round(nice * 100)} cm`;
 
-  return { paths, points, scaleBarPx, scaleBarLabel };
+  return { paths, polygons, scaleBarPx, scaleBarLabel };
 }
 
-/** Scale each ring toward its own centroid by `factor` (0..1) — a schematic footprint. */
-function scaleRingsToCentroid(points: number[][][], factor: number): string[] {
-  return points.map((ring) => {
+/** Scale each polygon's outer ring — a coverage study, not a setback offset. */
+function scalePolygonsToCentroid(polygons: number[][][][], factor: number): string[] {
+  return polygons.flatMap((polygon) => {
+    const ring = polygon[0];
+    if (!ring || ring.length === 0) return [];
     let cx = 0, cy = 0;
     for (const [x, y] of ring) {
       cx += x!;
@@ -230,7 +235,7 @@ function scaleRingsToCentroid(points: number[][][], factor: number): string[] {
       cx + (x! - cx) * factor,
       cy + (y! - cy) * factor,
     ]);
-    return ringToPath(scaled);
+    return [ringToPath(scaled)];
   });
 }
 

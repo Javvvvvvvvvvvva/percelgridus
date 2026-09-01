@@ -12,6 +12,7 @@ import type {
   AssessmentSummary,
   ScenarioSeed,
 } from "@/lib/parcelgrid";
+import type { ParcelGeometryUi } from "@/lib/parcel-geometry";
 
 export default function ProFormaClient({
   parcel,
@@ -29,7 +30,7 @@ export default function ProFormaClient({
   seed: ProFormaSeed;
   assessment: AssessmentSummary | null;
   openItemCount: number;
-  parcelGeometry: number[][][] | null;
+  parcelGeometry: ParcelGeometryUi | null;
   floodLabel: string | null;
   overlayLabel: string | null;
   scenarios: readonly ScenarioSeed[];
@@ -132,7 +133,7 @@ export default function ProFormaClient({
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
                     <div style={{ fontFamily: "var(--font-mono), monospace", fontWeight: 600, fontSize: 12, lineHeight: 1, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink3)" }}>
-                      Redevelopment options — by-right
+                      Zoning-cap options — preliminary
                     </div>
                     <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1, color: "var(--ink3)" }}>
                       pick one to detail below
@@ -238,7 +239,7 @@ export default function ProFormaClient({
                 <LineItemRow label="Hard cost per GSF" value={money(psf)} badge={{ tone: "purple", label: "USER ASSUMPTION" }} />
                 <LineItemRow label="Exit cap rate" value={capLabel} badge={{ tone: "purple", label: "USER ASSUMPTION" }} />
                 <LineItemRow
-                  label={`Buildable area — FAR ${dispFar ?? "—"}${active ? ` (${active.label})` : ""}`}
+                  label={`FAR-limited area — FAR ${dispFar ?? "—"}${active ? ` (${active.label})` : ""}`}
                   value={`${(dispBuildable ?? 0).toLocaleString("en-US")} GSF`}
                   badge={{ tone: "orange", label: "OFFICIAL · UNVERIFIED" }}
                 />
@@ -254,7 +255,7 @@ export default function ProFormaClient({
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <ParcelMap
-                  rings={parcelGeometry}
+                  geometry={parcelGeometry}
                   lotAreaSf={parcel.lotAreaSf}
                   floodLabel={floodLabel}
                   overlayLabel={overlayLabel}
@@ -265,7 +266,7 @@ export default function ProFormaClient({
                   compact
                 />
                 <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.4, color: "var(--ink3)" }}>
-                  {parcel.address} · {parcel.zoningDistrict ?? "—"} · {(parcel.lotAreaSf ?? 0).toLocaleString("en-US")} sq ft · shaded = by-right max footprint
+                  {parcel.address} · {parcel.zoningDistrict ?? "—"} · {(parcel.lotAreaSf ?? 0).toLocaleString("en-US")} sq ft · shaded = coverage-cap study; setbacks not applied
                 </div>
               </div>
 
@@ -491,8 +492,8 @@ function ExistingVsRedevelop({
   const diff = assessedValueNum - redevVal;
   const keepWins = diff > 0;
   const verdict = keepWins
-    ? `Keeping the existing building holds a ${money(assessedValueNum)} assessed asset — ${money(diff)} above what a by-right ${redevLabel.toLowerCase()} redevelopment stabilizes at (${money(redevVal)}). Redevelopment does not pencil here.`
-    : `A by-right ${redevLabel.toLowerCase()} redevelopment stabilizes at ${money(redevVal)}, ${money(-diff)} above the existing ${money(assessedValueNum)} assessed value.`;
+    ? `Keeping the existing building holds a ${money(assessedValueNum)} assessed asset — ${money(diff)} above what the preliminary zoning-cap ${redevLabel.toLowerCase()} scenario stabilizes at (${money(redevVal)}). Redevelopment does not pencil here.`
+    : `The preliminary zoning-cap ${redevLabel.toLowerCase()} scenario stabilizes at ${money(redevVal)}, ${money(-diff)} above the existing ${money(assessedValueNum)} assessed value.`;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>

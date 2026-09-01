@@ -97,7 +97,7 @@ export default async function ReportPage({
             {/* LEFT — real parcel map + subject identity + open items */}
             <div className="pg-map-col">
               <ParcelMap
-                rings={sa.parcelGeometry}
+                geometry={sa.parcelGeometry}
                 lotAreaSf={subjectParcel.lotAreaSf}
                 floodLabel={floodLabel}
                 overlayLabel={overlayLabel}

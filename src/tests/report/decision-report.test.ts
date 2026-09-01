@@ -9,6 +9,7 @@ import {
   officialRule,
   unresolved,
   createParcelIdentity,
+  polygonGeometry,
   approvalBlockers,
 } from "@/lib/jurisdiction/index.js";
 import type { ByRightEnvelope, RuleCitation } from "@/lib/jurisdiction/index.js";
@@ -60,7 +61,7 @@ function dueDiligence(): SiteDueDiligence {
     address,
     parcel: {
       identity,
-      geometry: officialFact([[[0, 0]]], SRC),
+      geometry: officialFact(polygonGeometry([[[0, 0]]]), SRC),
       lotArea: officialFact(Area.squareFeet("4346"), SRC),
       ownerName: officialFact("Jane Doe", SRC),
     },

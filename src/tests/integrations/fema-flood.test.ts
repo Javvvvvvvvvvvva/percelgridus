@@ -8,7 +8,7 @@ import {
   type NfhlResponse,
 } from "@/lib/integrations/us-fema/index.js";
 import { isEvidence, isUnresolved } from "@/lib/jurisdiction/evidence.js";
-import type { PolygonCoordinates } from "@/lib/jurisdiction/providers.js";
+import type { ParcelGeometry, PolygonCoordinates } from "@/lib/jurisdiction/providers.js";
 
 function fixture(name: string): NfhlResponse {
   const url = new URL(`./fixtures/${name}.json`, import.meta.url);
@@ -133,6 +133,20 @@ describe("FemaFloodProvider", () => {
       "https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28/query",
     );
     expect(calledUrl.length).toBeLessThan(120);
+  });
+
+  it("sends every MultiPolygon part to FEMA instead of dropping later parts", () => {
+    const second = SQUARE[0]!.map(([lng, lat]) => [lng! + 0.01, lat!]);
+    const multipart: ParcelGeometry = {
+      type: "MultiPolygon",
+      coordinates: [SQUARE, [second]],
+    };
+    const body = new URLSearchParams(
+      new FemaFloodProvider().queryBody(multipart),
+    );
+    const geometry = JSON.parse(body.get("geometry")!) as { rings: number[][][] };
+    expect(geometry.rings).toHaveLength(2);
+    expect(geometry.rings[1]![0]![0]).toBeCloseTo(-93.2805);
   });
 
   it("throws FemaFloodError on a non-OK HTTP status", async () => {
