@@ -57,7 +57,16 @@ export default function LandingPage() {
           </div>
 
           <div style={{ padding: "8px 24px 40px", maxWidth: 980, margin: "0 auto", width: "100%" }}>
-            <UsMapInteractive states={states} supported={["Minnesota"]} />
+            <UsMapInteractive
+              states={states}
+              supported={["Minnesota"]}
+              coverage={{
+                Minnesota: [
+                  { city: "Minneapolis", tier: "full" },
+                  { city: "Saint Paul", tier: "zoning" },
+                ],
+              }}
+            />
           </div>
         </div>
       </div>

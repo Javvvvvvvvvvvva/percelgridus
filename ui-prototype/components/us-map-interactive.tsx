@@ -10,13 +10,28 @@ import { MAP_VIEWBOX, type StateShape } from "@/lib/us-map";
  * are tinted so they are discoverable; everything else is an honest "not yet
  * supported" (the pilot is Minneapolis / Hennepin County, MN).
  */
+/** One city's coverage tier within a supported state. */
+export interface CityCoverage {
+  readonly city: string;
+  /** "full" = parcel + zoning + hazards + tax; "zoning" = zoning live, parcels pending. */
+  readonly tier: "full" | "zoning";
+}
+
+const TIER_LABEL: Record<CityCoverage["tier"], string> = {
+  full: "Parcel · zoning · tax",
+  zoning: "Zoning live · parcels pending",
+};
+
 export function UsMapInteractive({
   states,
   supported,
+  coverage = {},
 }: {
   states: StateShape[];
   /** State names that route to a live search (currently just Minnesota). */
   supported: string[];
+  /** Per-state city coverage, shown in the tooltip and the coverage panel. */
+  coverage?: Record<string, readonly CityCoverage[]>;
 }) {
   const router = useRouter();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -102,9 +117,17 @@ export function UsMapInteractive({
             <span style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 600, fontSize: 14, lineHeight: 1.2 }}>
               {hovered}
             </span>
-            <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, lineHeight: 1.3, letterSpacing: ".06em", opacity: 0.85 }}>
-              {isSupported(hovered) ? "LIVE · HENNEPIN COUNTY" : "NOT YET SUPPORTED"}
-            </span>
+            {isSupported(hovered) && coverage[hovered]?.length ? (
+              coverage[hovered]!.map((c) => (
+                <span key={c.city} style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, lineHeight: 1.35, letterSpacing: ".04em", opacity: 0.9 }}>
+                  {c.city} · {TIER_LABEL[c.tier]}
+                </span>
+              ))
+            ) : (
+              <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, lineHeight: 1.3, letterSpacing: ".06em", opacity: 0.85 }}>
+                {isSupported(hovered) ? "LIVE" : "NOT YET SUPPORTED"}
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -143,6 +166,70 @@ export function UsMapInteractive({
         >
           Search a Minneapolis address →
         </button>
+      </div>
+
+      {/* City-level coverage — honest about what resolves where. */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "stretch" }}>
+        {supported.flatMap((state) =>
+          (coverage[state] ?? []).map((c) => (
+            <div
+              key={state + c.city}
+              style={{
+                flex: "1 1 200px",
+                background: "var(--panel)",
+                border: "1px solid var(--line)",
+                borderRadius: 8,
+                padding: "12px 14px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 5,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <span style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 600, fontSize: 14, lineHeight: 1.2 }}>{c.city}</span>
+                <span
+                  style={{
+                    fontFamily: "var(--font-mono), monospace",
+                    fontSize: 9,
+                    lineHeight: 1,
+                    letterSpacing: ".06em",
+                    textTransform: "uppercase",
+                    padding: "3px 7px",
+                    borderRadius: 4,
+                    whiteSpace: "nowrap",
+                    color: c.tier === "full" ? "var(--green)" : "var(--orange)",
+                    background: c.tier === "full" ? "var(--green-bg)" : "var(--orange-bg)",
+                    border: `1px solid ${c.tier === "full" ? "var(--green)" : "var(--orange)"}`,
+                  }}
+                >
+                  {c.tier === "full" ? "Full" : "Zoning"}
+                </span>
+              </div>
+              <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.4, color: "var(--ink3)" }}>
+                {state} · {TIER_LABEL[c.tier]}
+              </span>
+            </div>
+          )),
+        )}
+        <div
+          style={{
+            flex: "1 1 200px",
+            background: "var(--panel2)",
+            border: "1px dashed var(--line2)",
+            borderRadius: 8,
+            padding: "12px 14px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 5,
+          }}
+        >
+          <span style={{ fontFamily: "var(--font-sans), sans-serif", fontWeight: 600, fontSize: 14, lineHeight: 1.2, color: "var(--ink2)" }}>
+            Nationwide
+          </span>
+          <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, lineHeight: 1.4, color: "var(--ink3)" }}>
+            Parcels anywhere in the US with a Regrid token · zoning added per city
+          </span>
+        </div>
       </div>
 
       {notice && (
